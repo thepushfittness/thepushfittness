@@ -25,6 +25,83 @@
   "checkins": [],
   "notifications": [
     {
+      "id": "notif-1790940021187-7pd0",
+      "userId": "user-trainer-1",
+      "role": "trainer",
+      "title": "Weekly Check-in Submitted",
+      "message": "Client Alpha just submitted their weekly check-in.",
+      "type": "checkin",
+      "link": "/clients/client-1790940020989?tab=checkins",
+      "isRead": false,
+      "timestamp": "2026-10-02T11:20:21.187Z"
+    },
+    {
+      "id": "notif-1790940021166-yfpe",
+      "userId": "user-trainer-1",
+      "role": "trainer",
+      "title": "New Client Message",
+      "message": "Client: \"Hello Coach, ready for the upcoming session!...\"",
+      "type": "message",
+      "link": "/clients/client-1790940020989?tab=messages",
+      "isRead": false,
+      "timestamp": "2026-10-02T11:20:21.166Z"
+    },
+    {
+      "id": "notif-1790940021149-s8yt",
+      "userId": "user-trainer-1",
+      "role": "trainer",
+      "title": "Workout Completed",
+      "message": "Client Alpha completed \"Test Full Body\"!",
+      "type": "workout",
+      "link": "/clients/client-1790940020989?tab=workout-history",
+      "isRead": false,
+      "timestamp": "2026-10-02T11:20:21.149Z"
+    },
+    {
+      "id": "notif-1790940021072-9asl",
+      "userId": "user-client-1790940020989",
+      "role": "client",
+      "title": "New Program Assigned!",
+      "message": "Coach Alex assigned you \"Acceptance Test Hypertrophy\". Check out your workouts!",
+      "type": "workout",
+      "link": "/workouts",
+      "isRead": false,
+      "timestamp": "2026-10-02T11:20:21.072Z"
+    },
+    {
+      "id": "notif-1790940021048-trxl",
+      "userId": "user-client-1790940020989",
+      "role": "client",
+      "title": "New Session Scheduled",
+      "message": "Session booked for 2026-10-05 at 10:00 AM (1-on-1 In-Person).",
+      "type": "session",
+      "link": "/schedule",
+      "isRead": false,
+      "timestamp": "2026-10-02T11:20:21.048Z"
+    },
+    {
+      "id": "notif-1790939994699-5x7l",
+      "userId": "user-client-1790939994624",
+      "role": "client",
+      "title": "New Program Assigned!",
+      "message": "Coach Alex assigned you \"Acceptance Test Hypertrophy\". Check out your workouts!",
+      "type": "workout",
+      "link": "/workouts",
+      "isRead": false,
+      "timestamp": "2026-10-02T11:19:54.699Z"
+    },
+    {
+      "id": "notif-1790939994659-5vj8",
+      "userId": "user-client-1790939994624",
+      "role": "client",
+      "title": "New Session Scheduled",
+      "message": "Session booked for 2026-10-05 at 10:00 AM (1-on-1 In-Person).",
+      "type": "session",
+      "link": "/schedule",
+      "isRead": false,
+      "timestamp": "2026-10-02T11:19:54.659Z"
+    },
+    {
       "id": "notif-welcome-1",
       "userId": "user-trainer-1",
       "role": "trainer",
