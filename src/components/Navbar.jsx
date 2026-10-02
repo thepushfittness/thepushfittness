@@ -4,43 +4,23 @@ import { useNotifications } from '../context/NotificationContext';
 import { 
   Dumbbell, 
   Bell, 
-  UserCheck, 
-  Users, 
   LogOut, 
-  RefreshCw, 
-  ShieldCheck, 
-  User, 
-  ChevronDown,
+  CheckCircle2, 
+  Calendar, 
+  DollarSign, 
   AlertTriangle,
-  CheckCircle2,
-  Calendar,
-  DollarSign,
-  MessageSquare
+  User,
+  ShieldCheck
 } from 'lucide-react';
 
 export function Navbar({ activeTab, setActiveTab }) {
-  const { user, isTrainer, isClient, switchAccount, logout } = useAuth();
+  const { user, isTrainer, isClient, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllRead, showToast } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
 
-  const demoAccounts = [
-    { label: "Coach Alex Rivera", role: "trainer", desc: "Admin / Head Coach", tag: "Trainer" },
-    { label: "Sarah Chen", role: "client", clientId: "client-1", desc: "Active (92% Adherence)", tag: "Client" },
-    { label: "Marcus Vance", role: "client", clientId: "client-2", desc: "Strength Athlete (96% Adh)", tag: "Client" },
-    { label: "David Miller", role: "client", clientId: "client-3", desc: "⚠️ Overdue & Inactive", tag: "Needs Attention" },
-    { label: "Elena Rostova", role: "client", clientId: "client-4", desc: "Onboarding (Step 5)", tag: "Client" },
-    { label: "Jordan Taylor", role: "client", clientId: "client-5", desc: "Paused (Rehab Protocol)", tag: "Client" }
-  ];
-
-  const handleSwitch = async (acc) => {
-    try {
-      await switchAccount(acc.role, acc.clientId);
-      setShowAccountSwitcher(false);
-      showToast(`Switched account to ${acc.label} (${acc.role})`);
-    } catch (err) {
-      showToast('Account switch failed', 'error');
-    }
+  const handleLogout = () => {
+    logout();
+    showToast('Signed out of thepushfittness');
   };
 
   return (
@@ -48,7 +28,12 @@ export function Navbar({ activeTab, setActiveTab }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab(isTrainer ? 'dashboard' : 'workout')}>
+          <div 
+            className="flex items-center space-x-3 cursor-pointer" 
+            onClick={() => {
+              if (isTrainer) setActiveTab('dashboard');
+            }}
+          >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-950/50">
               <Dumbbell className="w-6 h-6 text-slate-950 font-bold" />
             </div>
@@ -73,62 +58,23 @@ export function Navbar({ activeTab, setActiveTab }) {
 
           {/* Right Action Icons */}
           <div className="flex items-center space-x-3">
-            {/* Quick Demo Switcher Pill */}
-            <div className="relative">
-              <button
-                onClick={() => setShowAccountSwitcher(!showAccountSwitcher)}
-                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-medium transition shadow-sm"
-                title="Switch active user to test Trainer and Client roles"
-              >
-                <div className={`w-2 h-2 rounded-full ${isTrainer ? 'bg-emerald-400 animate-pulse' : 'bg-cyan-400'}`} />
-                <span className="max-w-[120px] sm:max-w-none truncate font-semibold">
-                  {user?.name || 'Switch Account'}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-
-              {showAccountSwitcher && (
-                <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-2 z-50">
-                  <div className="px-3 py-1.5 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
-                    <span>Role & Account Switcher</span>
-                    <span className="text-[10px] text-emerald-400">Demo Testing</span>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
-                    {demoAccounts.map((acc, idx) => {
-                      const isCurrent = (acc.role === 'trainer' && isTrainer) || (acc.clientId && user?.clientId === acc.clientId);
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => handleSwitch(acc)}
-                          className={`w-full text-left px-3 py-2.5 hover:bg-slate-800/80 transition flex items-center justify-between ${
-                            isCurrent ? 'bg-emerald-950/30 text-emerald-300' : 'text-slate-200'
-                          }`}
-                        >
-                          <div>
-                            <div className="text-xs font-semibold flex items-center space-x-1.5">
-                              <span>{acc.label}</span>
-                              {acc.tag === 'Needs Attention' && (
-                                <span className="bg-red-500/20 text-red-400 text-[9px] px-1.5 py-0.2 rounded font-bold">Alert</span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-slate-400">{acc.desc}</div>
-                          </div>
-                          {isCurrent && (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+            {/* Authenticated User Status Pill */}
+            <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs">
+              <div className={`w-2 h-2 rounded-full ${isTrainer ? 'bg-emerald-400 animate-pulse' : 'bg-cyan-400'}`} />
+              <span className="font-semibold text-white max-w-[140px] truncate">
+                {user?.name || 'Authorized User'}
+              </span>
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">
+                ({isTrainer ? 'Admin' : 'Athlete'})
+              </span>
             </div>
 
             {/* Notification Bell */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 transition"
+                className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 transition"
+                title="Notifications"
               >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
@@ -139,7 +85,7 @@ export function Navbar({ activeTab, setActiveTab }) {
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-2 z-50">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-2 z-50">
                   <div className="px-4 py-2 border-b border-slate-800 flex items-center justify-between">
                     <span className="text-xs font-bold text-white uppercase tracking-wider">Notifications</span>
                     {unreadCount > 0 && (
@@ -188,11 +134,21 @@ export function Navbar({ activeTab, setActiveTab }) {
               )}
             </div>
 
+            {/* Sign Out Button */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-950/40 hover:text-red-400 hover:border-red-900/60 text-slate-300 border border-slate-700 text-xs font-semibold transition"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+
             {/* User Profile Avatar */}
-            <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
+            <div className="flex items-center space-x-2 pl-1">
               <img
                 src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"}
-                alt={user?.name}
+                alt={user?.name || 'User'}
                 className="w-8 h-8 rounded-full border border-slate-700 object-cover"
               />
             </div>

@@ -509,7 +509,7 @@ export function ClientProfileView({
                 </div>
                 <div>
                   <span className="text-slate-500 block">Active Plan</span>
-                  <span className="text-white font-medium">{client.planName} (${client.monthlyPrice}/mo)</span>
+                  <span className="text-white font-medium">{client.planName} (₹{client.monthlyPrice}/mo)</span>
                 </div>
               </div>
 
@@ -888,7 +888,7 @@ export function ClientProfileView({
             <div>
               <h2 className="text-lg font-bold text-white">Payment & Subscription Invoices</h2>
               <p className="text-xs text-slate-400">
-                Lifetime Revenue: <strong className="text-emerald-400">${client.lifetimeRevenue}</strong> • Next Due Date: <strong className="text-white">{client.nextPaymentDate}</strong>
+                Lifetime Revenue: <strong className="text-emerald-400">₹{client.lifetimeRevenue}</strong> • Next Due Date: <strong className="text-white">{client.nextPaymentDate}</strong>
               </p>
             </div>
             <button
@@ -916,7 +916,7 @@ export function ClientProfileView({
                   {payments.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-800/50">
                       <td className="py-3 px-4 font-semibold text-white">{p.planName}</td>
-                      <td className="py-3 px-4 font-bold text-emerald-400">${p.amount}</td>
+                      <td className="py-3 px-4 font-bold text-emerald-400">₹{p.amount}</td>
                       <td className="py-3 px-4 text-slate-400">{p.dueDate}</td>
                       <td className="py-3 px-4 text-slate-300">{p.paidDate || 'Pending'}</td>
                       <td className="py-3 px-4">

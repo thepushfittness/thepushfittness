@@ -102,6 +102,7 @@ class Database {
       name: clientData.name,
       role: 'client',
       clientId: id,
+      password: clientData.password || 'client123',
       phone: clientData.phone || '',
       avatar: clientData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(clientData.name)}`,
       createdAt: new Date().toISOString()
@@ -531,7 +532,7 @@ class Database {
         client.id,
         'payment_received',
         'Payment Recorded',
-        `Recorded \$${newPayment.amount} for ${newPayment.planName} (${newPayment.referenceId}).`
+        `Recorded ₹${newPayment.amount} for ${newPayment.planName} (${newPayment.referenceId}).`
       );
     }
 
@@ -557,7 +558,7 @@ class Database {
         client.id,
         'payment_received',
         'Payment Succeeded',
-        `Marked invoice \$${updated.amount} as Paid.`
+        `Marked invoice ₹${updated.amount} as Paid.`
       );
     }
 

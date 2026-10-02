@@ -14,17 +14,7 @@ export function AuthProvider({ children }) {
     async function initAuth() {
       const token = getAuthToken();
       if (!token) {
-        // Default to Trainer session for immediate seamless testing if no session exists
-        try {
-          const res = await api.demoSwitch('trainer');
-          setAuthToken(res.token);
-          setUser(res.user);
-          setClientProfile(res.clientProfile || null);
-        } catch (err) {
-          console.error('Failed default login:', err);
-        } finally {
-          setLoading(false);
-        }
+        setLoading(false);
         return;
       }
 
@@ -33,15 +23,10 @@ export function AuthProvider({ children }) {
         setUser(res.user);
         setClientProfile(res.clientProfile || null);
       } catch (err) {
-        console.warn('Session expired, switching to default trainer account:', err);
-        try {
-          const res = await api.demoSwitch('trainer');
-          setAuthToken(res.token);
-          setUser(res.user);
-          setClientProfile(res.clientProfile || null);
-        } catch (loginErr) {
-          console.error(loginErr);
-        }
+        console.warn('Session expired or invalid:', err);
+        setAuthToken(null);
+        setUser(null);
+        setClientProfile(null);
       } finally {
         setLoading(false);
       }

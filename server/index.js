@@ -92,9 +92,12 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
-  // In demo/production setup, password verification
-  // Accept "password123" for seed accounts
-  if (password !== 'password123' && password !== 'admin123' && password !== 'demo') {
+  // Validate password
+  const isValid = user.password 
+    ? (user.password === password)
+    : (password === 'admin123' || password === 'client123' || password === 'password123');
+
+  if (!isValid) {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
@@ -114,6 +117,35 @@ app.post('/api/auth/login', (req, res) => {
     },
     clientProfile
   });
+});
+
+// Forgot Password endpoint
+app.post('/api/auth/forgot-password', (req, res) => {
+  const { email } = req.body;
+  const user = db.findUserByEmail(email);
+  if (!user) {
+    // Return friendly message without disclosing user enumeration
+    return res.json({ success: true, message: 'If an account exists with this email, password reset instructions have been dispatched.' });
+  }
+  
+  // In production, send email reset link; in this system, provide instant reset token or instructions
+  res.json({
+    success: true,
+    message: `Password reset instructions sent for ${user.email}. Default credentials or temporary token active.`,
+    isTrainer: user.role === 'trainer'
+  });
+});
+
+// Reset Password endpoint
+app.post('/api/auth/reset-password', (req, res) => {
+  const { email, newPassword } = req.body;
+  const user = db.findUserByEmail(email);
+  if (!user) {
+    return res.status(404).json({ error: 'User account not found' });
+  }
+  user.password = newPassword;
+  db.save();
+  res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
 });
 
 // Demo switch login (instant seamless role toggle for demo/testing)

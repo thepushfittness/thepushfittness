@@ -131,9 +131,9 @@ export function AnalyticsView({ onSelectClient, onGenerateReport }) {
             <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-emerald-400 mt-2">
-            ${analytics?.projectedMRR?.toLocaleString() || 0}
+            ₹{analytics?.projectedMRR?.toLocaleString() || 0}
           </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">Annualized Run-Rate: ${(analytics?.projectedMRR * 12)?.toLocaleString()}</span>
+          <span className="text-[11px] text-slate-500 mt-1 block">Annualized Run-Rate: ₹{((analytics?.projectedMRR || 0) * 12)?.toLocaleString()}</span>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
@@ -142,9 +142,11 @@ export function AnalyticsView({ onSelectClient, onGenerateReport }) {
             <Users className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-white mt-2">
-            94.2%
+            {clients.length > 0 ? '94.2%' : '100%'}
           </div>
-          <span className="text-[11px] text-emerald-400 mt-1 block font-medium">Average Lifetime: 8.4 Months</span>
+          <span className="text-[11px] text-emerald-400 mt-1 block font-medium">
+            {clients.length > 0 ? 'Average Lifetime: 8.4 Months' : 'Ready for roster growth'}
+          </span>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
@@ -153,7 +155,7 @@ export function AnalyticsView({ onSelectClient, onGenerateReport }) {
             <Award className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-white mt-2">
-            $2,145
+            ₹{clients.length > 0 ? '2,145' : '0'}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">Across active roster</span>
         </div>
@@ -164,7 +166,7 @@ export function AnalyticsView({ onSelectClient, onGenerateReport }) {
             <Calendar className="w-4 h-4 text-purple-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-white mt-2">
-            92.8%
+            {clients.length > 0 ? '92.8%' : '100%'}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">Low no-show rate (&lt;4%)</span>
         </div>
@@ -178,7 +180,7 @@ export function AnalyticsView({ onSelectClient, onGenerateReport }) {
             <p className="text-xs text-slate-400">Total verified coaching income over the last 6 months</p>
           </div>
           <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
-            +85% Growth since May
+            Active Performance
           </span>
         </div>
 
@@ -187,11 +189,11 @@ export function AnalyticsView({ onSelectClient, onGenerateReport }) {
             <LineChart data={revenueTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} unit="$" />
+              <YAxis stroke="#64748b" fontSize={12} unit="₹" />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#fff' }}
               />
-              <Line type="monotone" dataKey="revenue" name="Monthly Revenue ($)" stroke="#10b981" strokeWidth={3} dot={{ r: 5 }} />
+              <Line type="monotone" dataKey="revenue" name="Monthly Revenue (₹)" stroke="#10b981" strokeWidth={3} dot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -237,24 +239,32 @@ export function AnalyticsView({ onSelectClient, onGenerateReport }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
-              {clients.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-800/50">
-                  <td className="py-3 px-4 font-bold text-white">
-                    <button
-                      onClick={() => onSelectClient(c.id, 'overview')}
-                      className="hover:text-emerald-400 transition"
-                    >
-                      {c.name}
-                    </button>
+              {clients.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-slate-500 text-xs">
+                    No client records yet. Click "+ Add Client" on the dashboard to register your first client.
                   </td>
-                  <td className="py-3 px-4 text-slate-400">{c.startDate}</td>
-                  <td className="py-3 px-4 font-semibold text-slate-200">{c.renewalsCount || 0} times</td>
-                  <td className="py-3 px-4 font-extrabold text-emerald-400">${c.lifetimeRevenue || c.monthlyPrice}</td>
-                  <td className="py-3 px-4 text-slate-300">{c.lastPaymentDate || '—'}</td>
-                  <td className="py-3 px-4 text-slate-300">{c.lastSessionDate || '—'}</td>
-                  <td className="py-3 px-4 text-cyan-400 font-medium">{c.acquisitionSource}</td>
                 </tr>
-              ))}
+              ) : (
+                clients.map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-800/50">
+                    <td className="py-3 px-4 font-bold text-white">
+                      <button
+                        onClick={() => onSelectClient(c.id, 'overview')}
+                        className="hover:text-emerald-400 transition"
+                      >
+                        {c.name}
+                      </button>
+                    </td>
+                    <td className="py-3 px-4 text-slate-400">{c.startDate}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-200">{c.renewalsCount || 0} times</td>
+                    <td className="py-3 px-4 font-extrabold text-emerald-400">₹{c.lifetimeRevenue || c.monthlyPrice}</td>
+                    <td className="py-3 px-4 text-slate-300">{c.lastPaymentDate || '—'}</td>
+                    <td className="py-3 px-4 text-slate-300">{c.lastSessionDate || '—'}</td>
+                    <td className="py-3 px-4 text-cyan-400 font-medium">{c.acquisitionSource}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

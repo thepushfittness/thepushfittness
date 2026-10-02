@@ -11,6 +11,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: 'client123',
     phone: '',
     dateOfBirth: '1995-05-15',
     gender: 'Female',
@@ -45,8 +46,8 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
     nutritionNotes: '',
 
     // Package
-    planName: 'Performance Hybrid Package',
-    monthlyPrice: 380,
+    planName: 'Personal Coaching Package',
+    monthlyPrice: 5000,
     billingCycle: 'Monthly',
     sessionsPurchased: 12,
     paymentStatus: 'due',
@@ -142,7 +143,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
           {/* STEP 1: PERSONAL INFORMATION */}
           {activeStep === 1 && (
             <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-slate-400 font-semibold block mb-1">Full Name *</label>
                   <input
@@ -163,6 +164,16 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Client Login Password</label>
+                  <input
+                    type="text"
+                    placeholder="client123"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-emerald-400 font-mono font-medium"
                   />
                 </div>
               </div>
@@ -378,7 +389,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 font-semibold block mb-1">Monthly Price ($)</label>
+                  <label className="text-slate-400 font-semibold block mb-1">Monthly Price (₹)</label>
                   <input
                     type="number"
                     value={formData.monthlyPrice}

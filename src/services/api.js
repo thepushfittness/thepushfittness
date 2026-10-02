@@ -60,6 +60,8 @@ async function request(endpoint, options = {}) {
 export const api = {
   // Auth
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: (email, newPassword) => request('/auth/reset-password', { method: 'POST', body: { email, newPassword } }),
   demoSwitch: (role, clientId = null) => request('/auth/demo-switch', { method: 'POST', body: { role, clientId } }),
   getMe: () => request('/auth/me'),
 

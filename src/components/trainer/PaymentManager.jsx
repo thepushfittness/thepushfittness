@@ -75,7 +75,7 @@ export function PaymentManager({ onSelectClient }) {
 
       setPayments(prev => [created, ...prev]);
       setShowRecordModal(false);
-      showToast(`Recorded payment of \$${amount} successfully!`);
+      showToast(`Recorded payment of ₹${amount} successfully!`);
     } catch (err) {
       showToast('Failed to record payment', 'error');
     }
@@ -95,7 +95,7 @@ export function PaymentManager({ onSelectClient }) {
   };
 
   const handleSendReminder = (p) => {
-    showToast(`Payment reminder dispatch queued for ${p.clientName} ($${p.amount})`);
+    showToast(`Payment reminder dispatch queued for ${p.clientName} (₹${p.amount})`);
   };
 
   // Metrics
@@ -140,7 +140,7 @@ export function PaymentManager({ onSelectClient }) {
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Received</span>
           <div className="text-2xl font-display font-extrabold text-emerald-400 mt-1">
-            ${paidTotal.toLocaleString()}
+            ₹{paidTotal.toLocaleString()}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">Active paying clients</span>
         </div>
@@ -148,7 +148,7 @@ export function PaymentManager({ onSelectClient }) {
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Upcoming Due Invoices</span>
           <div className="text-2xl font-display font-extrabold text-amber-400 mt-1">
-            ${dueTotal.toLocaleString()}
+            ₹{dueTotal.toLocaleString()}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">Due in the next 14 days</span>
         </div>
@@ -158,7 +158,7 @@ export function PaymentManager({ onSelectClient }) {
         }`}>
           <span className="text-xs font-semibold text-red-400 uppercase tracking-wider block">Overdue Invoices</span>
           <div className="text-2xl font-display font-extrabold text-red-400 mt-1">
-            ${overdueTotal.toLocaleString()}
+            ₹{overdueTotal.toLocaleString()}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">Requires manual intervention</span>
         </div>
@@ -204,66 +204,74 @@ export function PaymentManager({ onSelectClient }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-800/50">
-                    <td className="py-3.5 px-4 font-bold text-white">
-                      <div className="flex items-center space-x-2">
-                        <span>{p.clientName}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-200">
-                      <div>{p.planName}</div>
-                      <div className="text-[10px] text-slate-500">{p.billingCycle}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-display font-extrabold text-base text-emerald-400">
-                      ${p.amount}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-300">
-                      <div>{p.dueDate}</div>
-                      {p.paidDate && (
-                        <div className="text-[10px] text-slate-500">Paid on {p.paidDate}</div>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        p.status === 'paid'
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : p.status === 'due'
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">
-                      <div>{p.paymentMethod || 'Manual'}</div>
-                      <div className="text-slate-500 text-[10px]">{p.referenceId}</div>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      {p.status !== 'paid' ? (
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleSendReminder(p)}
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                            title="Send Payment Reminder"
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleMarkPaid(p.id)}
-                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-xs transition"
-                          >
-                            Mark Paid
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-emerald-400 text-xs font-semibold flex items-center justify-end">
-                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Settled
-                        </span>
-                      )}
+                {payments.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-12 text-center text-slate-500 text-xs">
+                      No invoice or payment records found. Click "+ Record Payment" to log a transaction.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  payments.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-800/50">
+                      <td className="py-3.5 px-4 font-bold text-white">
+                        <div className="flex items-center space-x-2">
+                          <span>{p.clientName}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-200">
+                        <div>{p.planName}</div>
+                        <div className="text-[10px] text-slate-500">{p.billingCycle}</div>
+                      </td>
+                      <td className="py-3.5 px-4 font-display font-extrabold text-base text-emerald-400">
+                        ₹{p.amount}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-300">
+                        <div>{p.dueDate}</div>
+                        {p.paidDate && (
+                          <div className="text-[10px] text-slate-500">Paid on {p.paidDate}</div>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          p.status === 'paid'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : p.status === 'due'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }`}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">
+                        <div>{p.paymentMethod || 'Manual'}</div>
+                        <div className="text-slate-500 text-[10px]">{p.referenceId}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {p.status !== 'paid' ? (
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => handleSendReminder(p)}
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 transition"
+                              title="Send Payment Reminder"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleMarkPaid(p.id)}
+                              className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-xs transition"
+                            >
+                              Mark Paid
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-emerald-400 text-xs font-semibold flex items-center justify-end">
+                            <CheckCircle className="w-3.5 h-3.5 mr-1" /> Settled
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -285,7 +293,7 @@ export function PaymentManager({ onSelectClient }) {
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
                 >
                   {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} (${c.monthlyPrice}/mo)</option>
+                    <option key={c.id} value={c.id}>{c.name} (₹{c.monthlyPrice}/mo)</option>
                   ))}
                 </select>
               </div>
@@ -302,7 +310,7 @@ export function PaymentManager({ onSelectClient }) {
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 font-semibold block mb-1">Amount ($)</label>
+                  <label className="text-slate-400 font-semibold block mb-1">Amount (₹)</label>
                   <input
                     type="number"
                     value={amount}

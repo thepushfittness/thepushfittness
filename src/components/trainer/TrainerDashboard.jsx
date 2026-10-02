@@ -179,14 +179,14 @@ export function TrainerDashboard({
         {/* Current Month Revenue */}
         <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm hover:border-slate-700 transition">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Revenue (Sep/Oct)</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Revenue This Month</span>
             <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-emerald-400">
-            ${analytics?.currentMonthRevenue?.toLocaleString() || 0}
+            ₹{analytics?.currentMonthRevenue?.toLocaleString() || 0}
           </div>
           <div className="text-[11px] text-slate-400 mt-1">
-            MRR run-rate: ${analytics?.projectedMRR?.toLocaleString() || 0}
+            MRR run-rate: ₹{analytics?.projectedMRR?.toLocaleString() || 0}
           </div>
         </div>
 
@@ -201,10 +201,10 @@ export function TrainerDashboard({
             <AlertTriangle className="w-4 h-4 text-red-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-red-400">
-            ${analytics?.overduePaymentsTotal || 0}
+            ₹{analytics?.overduePaymentsTotal || 0}
           </div>
           <div className="text-[11px] text-slate-400 mt-1">
-            Requires follow-up action
+            {analytics?.overduePaymentsTotal > 0 ? 'Requires follow-up action' : 'Zero overdue payments'}
           </div>
         </div>
 
@@ -217,7 +217,7 @@ export function TrainerDashboard({
           <div className="text-2xl font-display font-extrabold text-white">
             {clients.length > 0 
               ? Math.round(clients.reduce((s, c) => s + (c.adherenceScore || 0), 0) / clients.length) 
-              : 85}%
+              : 100}%
           </div>
           <div className="text-[11px] text-emerald-400 mt-1 flex items-center font-medium">
             <CheckCircle2 className="w-3 h-3 mr-1" /> High business retention
@@ -231,10 +231,10 @@ export function TrainerDashboard({
             <Activity className="w-4 h-4 text-purple-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-white">
-            2 Reviewed
+            {clients.length > 0 ? 'Up to date' : 'Ready'}
           </div>
           <div className="text-[11px] text-slate-400 mt-1">
-            All submitted check-ins up to date
+            All submitted check-ins reviewed
           </div>
         </div>
       </div>

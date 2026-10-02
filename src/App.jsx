@@ -12,6 +12,7 @@ import { AnalyticsView } from './components/trainer/AnalyticsView';
 import { AddClientModal } from './components/trainer/AddClientModal';
 import { ProgressReportModal } from './components/common/ProgressReportModal';
 import { ClientApp } from './components/client/ClientApp';
+import { LoginView } from './components/auth/LoginView';
 import { 
   LayoutDashboard, 
   Users, 
@@ -45,6 +46,11 @@ export function App() {
         </div>
       </div>
     );
+  }
+
+  // Not authenticated -> Show Login View
+  if (!user) {
+    return <LoginView />;
   }
 
   // Handle client selection to view full profile
