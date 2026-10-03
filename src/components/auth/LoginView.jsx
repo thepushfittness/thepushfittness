@@ -168,29 +168,6 @@ export function LoginView() {
               )}
             </button>
           </form>
-
-          {/* Quick Access Credentials Helper for Trainer & Client */}
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-2 text-[11px]">
-            <div className="flex items-center space-x-1.5 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Production Login Details</span>
-            </div>
-            <div className="space-y-1.5 text-slate-300">
-              <div 
-                onClick={() => { setEmail('admin@thepushfittness.com'); setPassword('admin123'); }}
-                className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 cursor-pointer transition flex items-center justify-between group"
-              >
-                <div>
-                  <span className="font-bold text-emerald-400">Trainer Admin Account</span>
-                  <p className="text-[10px] text-slate-400 font-mono">admin@thepushfittness.com • admin123</p>
-                </div>
-                <span className="text-[10px] text-emerald-400 opacity-0 group-hover:opacity-100 transition">Auto-fill →</span>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-900/40 text-slate-400 text-[10px]">
-                <strong className="text-slate-300">Client Accounts:</strong> When you add a new client from your Trainer Dashboard, an account is automatically created using their email and assigned password.
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Footer info */}
@@ -223,8 +200,7 @@ export function LoginView() {
                       If an account exists for <span className="text-white font-mono">{forgotEmail}</span>, instructions have been sent.
                     </p>
                     <p className="text-[10px] text-slate-400 mt-2">
-                      Trainer default: <strong className="text-white">admin123</strong><br />
-                      Client temporary default: <strong className="text-white">client123</strong>
+                      Please check your inbox or contact your coach for immediate access.
                     </p>
                   </div>
                 </div>
