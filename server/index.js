@@ -148,6 +148,36 @@ app.post('/api/auth/reset-password', (req, res) => {
   res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
 });
 
+// Update Profile & Password endpoint
+app.put('/api/auth/profile', authenticateToken, (req, res) => {
+  const { name, email, phone, avatar, password } = req.body;
+  const user = db.findUserById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  if (name) user.name = name.trim();
+  if (email) user.email = email.toLowerCase().trim();
+  if (phone) user.phone = phone.trim();
+  if (avatar) user.avatar = avatar.trim();
+  if (password) user.password = password;
+
+  db.save();
+  res.json({
+    success: true,
+    message: 'Profile and credentials updated successfully',
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      clientId: user.clientId,
+      avatar: user.avatar,
+      phone: user.phone
+    }
+  });
+});
+
 // Demo switch login (instant seamless role toggle for demo/testing)
 app.post('/api/auth/demo-switch', (req, res) => {
   const { role, clientId, email } = req.body;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { ProfileSettingsModal } from './common/ProfileSettingsModal';
 import { 
   Dumbbell, 
   Bell, 
@@ -10,13 +11,15 @@ import {
   DollarSign, 
   AlertTriangle,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Settings
 } from 'lucide-react';
 
 export function Navbar({ activeTab, setActiveTab }) {
   const { user, isTrainer, isClient, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllRead, showToast } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -58,16 +61,18 @@ export function Navbar({ activeTab, setActiveTab }) {
 
           {/* Right Action Icons */}
           <div className="flex items-center space-x-3">
-            {/* Authenticated User Status Pill */}
-            <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs">
+            {/* Authenticated User Status Pill & Settings trigger */}
+            <button
+              onClick={() => setShowProfileSettings(true)}
+              className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-750 border border-slate-700/80 text-xs transition group cursor-pointer"
+              title="Edit Profile, Email & Password"
+            >
               <div className={`w-2 h-2 rounded-full ${isTrainer ? 'bg-emerald-400 animate-pulse' : 'bg-cyan-400'}`} />
-              <span className="font-semibold text-white max-w-[140px] truncate">
+              <span className="font-semibold text-white max-w-[140px] truncate group-hover:text-emerald-400 transition">
                 {user?.name || 'Authorized User'}
               </span>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">
-                ({isTrainer ? 'Admin' : 'Athlete'})
-              </span>
-            </div>
+              <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition" />
+            </button>
 
             {/* Notification Bell */}
             <div className="relative">
@@ -145,16 +150,26 @@ export function Navbar({ activeTab, setActiveTab }) {
             </button>
 
             {/* User Profile Avatar */}
-            <div className="flex items-center space-x-2 pl-1">
+            <div 
+              onClick={() => setShowProfileSettings(true)}
+              className="flex items-center space-x-2 pl-1 cursor-pointer"
+              title="Click to edit profile & login"
+            >
               <img
                 src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"}
                 alt={user?.name || 'User'}
-                className="w-8 h-8 rounded-full border border-slate-700 object-cover"
+                className="w-8 h-8 rounded-full border border-slate-700 hover:border-emerald-400 object-cover transition"
               />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Profile & Login Settings Modal */}
+      <ProfileSettingsModal
+        isOpen={showProfileSettings}
+        onClose={() => setShowProfileSettings(false)}
+      />
     </header>
   );
 }
