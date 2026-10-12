@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api, setAuthToken, getAuthToken } from '../services/api';
+import { api, setAuthToken, getAuthToken, ensureServerSynced } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -12,6 +12,7 @@ export function AuthProvider({ children }) {
   // Initialize session on mount
   useEffect(() => {
     async function initAuth() {
+      await ensureServerSynced();
       const token = getAuthToken();
       if (!token) {
         setLoading(false);

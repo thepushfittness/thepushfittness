@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { EditClientModal } from './EditClientModal';
 import { 
   User, 
   ArrowLeft, 
@@ -67,6 +68,8 @@ export function ClientProfileView({
   const [timeline, setTimeline] = useState([]);
 
   // Modals & sub-states
+  const [showEditClientModal, setShowEditClientModal] = useState(false);
+  const [editClientStep, setEditClientStep] = useState(1);
   const [newMessageText, setNewMessageText] = useState('');
   const [messageCategory, setMessageCategory] = useState('general');
   const [newNoteTitle, setNewNoteTitle] = useState('');
@@ -81,6 +84,11 @@ export function ClientProfileView({
   // Check-in review state
   const [selectedCheckin, setSelectedCheckin] = useState(null);
   const [trainerFeedbackText, setTrainerFeedbackText] = useState('');
+
+  const openEditClient = (step = 1) => {
+    setEditClientStep(step);
+    setShowEditClientModal(true);
+  };
 
   const loadClientData = async () => {
     try {
@@ -255,7 +263,7 @@ export function ClientProfileView({
   return (
     <div className="space-y-6 pb-16">
       {/* Back button and quick actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           onClick={onBack}
           className="flex items-center space-x-1.5 text-xs font-semibold text-slate-400 hover:text-white transition"
@@ -264,7 +272,14 @@ export function ClientProfileView({
           <span>Back to All Clients</span>
         </button>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => openEditClient(1)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit Client</span>
+          </button>
           <button
             onClick={() => onGenerateReport(client.id)}
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition"
@@ -405,10 +420,19 @@ export function ClientProfileView({
           {/* Fitness & Personal Details */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-              <h2 className="text-base font-bold text-white flex items-center space-x-2">
-                <Dumbbell className="w-4 h-4 text-emerald-400" />
-                <span>Fitness Profile & Movement Background</span>
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Dumbbell className="w-4 h-4 text-emerald-400" />
+                  <span>Fitness Profile & Movement Background</span>
+                </h2>
+                <button
+                  onClick={() => openEditClient(2)}
+                  className="text-xs text-emerald-400 hover:underline font-semibold flex items-center space-x-1"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
+                </button>
+              </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
                 <div>
@@ -455,10 +479,19 @@ export function ClientProfileView({
 
             {/* Nutrition Protocol */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-              <h2 className="text-base font-bold text-white flex items-center space-x-2">
-                <Apple className="w-4 h-4 text-cyan-400" />
-                <span>Assigned Nutrition Protocol & Daily Targets</span>
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Apple className="w-4 h-4 text-cyan-400" />
+                  <span>Assigned Nutrition Protocol & Daily Targets</span>
+                </h2>
+                <button
+                  onClick={() => openEditClient(3)}
+                  className="text-xs text-emerald-400 hover:underline font-semibold flex items-center space-x-1"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
+                </button>
+              </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
@@ -493,15 +526,28 @@ export function ClientProfileView({
           {/* Right Column: Custom Fields, Contact & Marketing Consent */}
           <div className="space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-              <h2 className="text-base font-bold text-white">Client Management Data</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-white">Client Management Data</h2>
+                <button
+                  onClick={() => openEditClient(1)}
+                  className="text-xs text-emerald-400 hover:underline font-semibold flex items-center space-x-1"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
+                </button>
+              </div>
               <div className="space-y-2.5 text-xs">
                 <div>
+                  <span className="text-slate-500 block">Email</span>
+                  <span className="text-white font-medium">{client.email}</span>
+                </div>
+                <div>
                   <span className="text-slate-500 block">Phone</span>
-                  <span className="text-white font-medium">{client.phone}</span>
+                  <span className="text-white font-medium">{client.phone || '—'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Emergency Contact</span>
-                  <span className="text-white font-medium">{client.emergencyContact}</span>
+                  <span className="text-white font-medium">{client.emergencyContact || '—'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Acquisition Source</span>
@@ -1413,6 +1459,17 @@ export function ClientProfileView({
           </div>
         </div>
       )}
+
+      {/* Edit Client Modal */}
+      <EditClientModal
+        isOpen={showEditClientModal}
+        client={client}
+        initialStep={editClientStep}
+        onClose={() => setShowEditClientModal(false)}
+        onClientUpdated={(updated) => {
+          setClient(updated);
+        }}
+      />
     </div>
   );
 }

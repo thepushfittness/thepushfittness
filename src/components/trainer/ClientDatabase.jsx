@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { EditClientModal } from './EditClientModal';
 import { 
   Users, 
   Search, 
@@ -18,6 +19,7 @@ import {
   Flame, 
   X, 
   Eye, 
+  Edit3,
   Download,
   Phone,
   Mail,
@@ -34,8 +36,9 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
   const [adherenceFilter, setAdherenceFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
 
-  // Confirmation modal state for permanent delete
+  // Confirmation modal state for permanent delete & edit modal
   const [deleteConfirmClient, setDeleteConfirmClient] = useState(null);
+  const [editingClient, setEditingClient] = useState(null);
 
   const fetchClients = async () => {
     try {
@@ -362,7 +365,7 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
                     <td className="py-3.5 px-4">
                       <div>{getPaymentBadge(c.paymentStatus)}</div>
                       <div className="text-[10px] text-slate-500 mt-0.5">
-                        ${c.monthlyPrice}/mo • Next: {c.nextPaymentDate}
+                        ₹{c.monthlyPrice}/mo • Next: {c.nextPaymentDate}
                       </div>
                     </td>
 
@@ -378,6 +381,13 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
                     {/* Actions */}
                     <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => setEditingClient(c)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-400 transition"
+                          title="Edit Client Details"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={() => onSelectClient(c.id, 'overview')}
                           className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
@@ -418,6 +428,16 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
           </div>
         )}
       </div>
+
+      {/* Edit Client Modal */}
+      <EditClientModal
+        isOpen={!!editingClient}
+        client={editingClient}
+        onClose={() => setEditingClient(null)}
+        onClientUpdated={(updated) => {
+          setClients(prev => prev.map(item => item.id === updated.id ? updated : item));
+        }}
+      />
 
       {/* Confirmation Modal for Permanent Delete */}
       {deleteConfirmClient && (

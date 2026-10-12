@@ -6,6 +6,7 @@ import {
   Plus, 
   Trash2, 
   Copy, 
+  Edit3,
   UserCheck, 
   ChevronDown, 
   ChevronUp, 
@@ -23,11 +24,12 @@ export function WorkoutManager({ onSelectClient }) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // New program modal
+  // Create / Edit program modal
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingProgramId, setEditingProgramId] = useState(null);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [programName, setProgramName] = useState('');
-  const [programGoal, setProgramGoal] = useState('Strength & Hypertrophy');
+  const [programGoal, setProgramGoal] = useState('Strength & Muscle Gain');
   const [durationWeeks, setDurationWeeks] = useState(8);
   const [daysPerWeek, setDaysPerWeek] = useState(4);
   const [programNotes, setProgramNotes] = useState('');
@@ -133,6 +135,28 @@ export function WorkoutManager({ onSelectClient }) {
     setDays(updated);
   };
 
+  const handleOpenEditProgram = (prog) => {
+    setEditingProgramId(prog.id);
+    setSelectedClientId(prog.clientId || (clients[0]?.id || ''));
+    setProgramName(prog.name || '');
+    setProgramGoal(prog.goal || 'Strength & Muscle Gain');
+    setDurationWeeks(prog.durationWeeks || 8);
+    setDaysPerWeek(prog.daysPerWeek || 4);
+    setProgramNotes(prog.notes || '');
+    setDays(JSON.parse(JSON.stringify(prog.days || [])));
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteProgram = async (progId, progName) => {
+    try {
+      await api.deleteProgram(progId);
+      setPrograms(prev => prev.filter(p => p.id !== progId));
+      showToast(`Deleted program "${progName}"`);
+    } catch (err) {
+      showToast('Failed to delete program', 'error');
+    }
+  };
+
   const handleCreateProgram = async (e) => {
     e.preventDefault();
     if (!programName.trim()) {
@@ -141,25 +165,40 @@ export function WorkoutManager({ onSelectClient }) {
     }
 
     try {
-      const created = await api.createProgram({
-        clientId: selectedClientId,
-        name: programName,
-        goal: programGoal,
-        durationWeeks: Number(durationWeeks),
-        daysPerWeek: Number(daysPerWeek),
-        notes: programNotes,
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date(Date.now() + durationWeeks * 7 * 24 * 3600 * 1000).toISOString().split('T')[0],
-        days
-      });
+      if (editingProgramId) {
+        const updated = await api.updateProgram(editingProgramId, {
+          clientId: selectedClientId,
+          name: programName,
+          goal: programGoal,
+          durationWeeks: Number(durationWeeks),
+          daysPerWeek: Number(daysPerWeek),
+          notes: programNotes,
+          days
+        });
+        setPrograms(prev => prev.map(p => p.id === editingProgramId ? updated : p));
+        showToast(`Program "${programName}" updated!`);
+      } else {
+        const created = await api.createProgram({
+          clientId: selectedClientId,
+          name: programName,
+          goal: programGoal,
+          durationWeeks: Number(durationWeeks),
+          daysPerWeek: Number(daysPerWeek),
+          notes: programNotes,
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: new Date(Date.now() + durationWeeks * 7 * 24 * 3600 * 1000).toISOString().split('T')[0],
+          days
+        });
+        setPrograms(prev => [created, ...prev]);
+        showToast(`Program "${programName}" created and assigned!`);
+      }
 
-      setPrograms(prev => [created, ...prev]);
       setShowCreateModal(false);
-      showToast(`Program "${programName}" created and assigned!`);
+      setEditingProgramId(null);
       setProgramName('');
       setProgramNotes('');
     } catch (err) {
-      showToast('Failed to create program', 'error');
+      showToast('Failed to save program', 'error');
     }
   };
 
@@ -195,7 +234,12 @@ export function WorkoutManager({ onSelectClient }) {
         </div>
 
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setEditingProgramId(null);
+            setProgramName('');
+            setProgramNotes('');
+            setShowCreateModal(true);
+          }}
           className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition transform active:scale-95"
         >
           <Plus className="w-4 h-4" />
@@ -219,10 +263,22 @@ export function WorkoutManager({ onSelectClient }) {
             </div>
             <button
               onClick={() => {
+                setEditingProgramId(null);
                 setProgramName(tpl.name);
                 setProgramGoal(tpl.goal);
                 setDurationWeeks(tpl.durationWeeks);
                 setDaysPerWeek(tpl.daysPerWeek);
+                if (tpl.days && tpl.days.length > 0) {
+                  setDays(tpl.days.map((d, idx) => ({
+                    ...d,
+                    dayNumber: d.dayNumber || idx + 1,
+                    focus: d.focus || tpl.goal,
+                    exercises: (d.exercises || []).map(ex => ({
+                      ...ex,
+                      restSeconds: ex.restSeconds || ex.restSec || 60
+                    }))
+                  })));
+                }
                 setShowCreateModal(true);
               }}
               className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1"
@@ -265,11 +321,25 @@ export function WorkoutManager({ onSelectClient }) {
 
                     <div className="flex items-center space-x-1">
                       <button
+                        onClick={() => handleOpenEditProgram(prog)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-400 transition"
+                        title="Edit Program"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={() => handleDuplicate(prog)}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
                         title="Duplicate Program"
                       >
                         <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProgram(prog.id, prog.name)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-950/60 text-slate-400 hover:text-red-400 transition"
+                        title="Delete Program"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -312,17 +382,22 @@ export function WorkoutManager({ onSelectClient }) {
         )}
       </div>
 
-      {/* CREATE PROGRAM MODAL */}
+      {/* CREATE / EDIT PROGRAM MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-3xl w-full shadow-2xl my-8 space-y-6">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-base font-bold text-white">Create New Workout Program</h3>
+                <h3 className="text-base font-bold text-white">
+                  {editingProgramId ? 'Edit Workout Program' : 'Create New Workout Program'}
+                </h3>
                 <p className="text-xs text-slate-400">Assemble periodized routines and assign to a client</p>
               </div>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setEditingProgramId(null);
+                }}
                 className="text-slate-400 hover:text-white text-xs font-bold"
               >
                 ✕ Close

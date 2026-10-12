@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { api } from '../../services/api';
@@ -27,6 +27,16 @@ export function ProfileSettingsModal({ isOpen, onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (user && isOpen) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+      setAvatar(user.avatar || '');
+      setNewPassword('');
+    }
+  }, [user, isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -34,10 +44,10 @@ export function ProfileSettingsModal({ isOpen, onClose }) {
     try {
       setSaving(true);
       const payload = {
-        name,
-        email,
-        phone,
-        avatar
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        avatar: avatar.trim()
       };
       if (newPassword.trim()) {
         payload.password = newPassword.trim();
@@ -45,7 +55,8 @@ export function ProfileSettingsModal({ isOpen, onClose }) {
 
       await api.updateProfile(payload);
       await refreshMe();
-      showToast('Profile & credentials updated successfully!');
+      setNewPassword('');
+      showToast(`Login & profile saved (${payload.email})!`);
       onClose();
     } catch (err) {
       showToast(err.message || 'Failed to update profile', 'error');

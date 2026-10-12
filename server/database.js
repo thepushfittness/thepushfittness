@@ -27,26 +27,38 @@ class Database {
       } else {
         console.log('Initializing fresh database with demo seed data...');
         this.data = JSON.parse(JSON.stringify(initialData));
-        this.save();
+        this.save(false);
       }
     } catch (err) {
       console.error('Error initializing database, resetting to seed:', err);
       this.data = JSON.parse(JSON.stringify(initialData));
-      this.save();
+      this.save(false);
     }
   }
 
-  save() {
+  save(markUpdated = true) {
     try {
+      if (markUpdated && this.data) {
+        this.data.lastUpdatedAt = Date.now();
+      }
       fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
     } catch (err) {
       console.error('Failed to write database file:', err);
     }
   }
 
+  restoreSnapshot(snapshot) {
+    if (!snapshot || !Array.isArray(snapshot.users) || !Array.isArray(snapshot.clients)) {
+      return false;
+    }
+    this.data = snapshot;
+    this.save(false);
+    return true;
+  }
+
   reset() {
     this.data = JSON.parse(JSON.stringify(initialData));
-    this.save();
+    this.save(false);
     return this.data;
   }
 
@@ -94,6 +106,7 @@ class Database {
   createClient(clientData) {
     const id = `client-${Date.now()}`;
     const userId = `user-${id}`;
+    const clientPassword = clientData.password || 'client123';
     
     // Create companion user account for client login
     const newUser = {
@@ -102,7 +115,7 @@ class Database {
       name: clientData.name,
       role: 'client',
       clientId: id,
-      password: clientData.password || 'client123',
+      password: clientPassword,
       phone: clientData.phone || '',
       avatar: clientData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(clientData.name)}`,
       createdAt: new Date().toISOString()
@@ -114,6 +127,7 @@ class Database {
       userId,
       name: clientData.name,
       email: clientData.email,
+      password: clientPassword,
       phone: clientData.phone || '',
       avatar: newUser.avatar,
       dateOfBirth: clientData.dateOfBirth || '',
@@ -129,7 +143,7 @@ class Database {
       acquisitionSource: clientData.acquisitionSource || 'Website',
       heightCm: Number(clientData.heightCm) || 170,
       weightKg: Number(clientData.weightKg) || 70,
-      startingWeightKg: Number(clientData.weightKg) || 70,
+      startingWeightKg: Number(clientData.startingWeightKg || clientData.weightKg) || 70,
       targetWeightKg: Number(clientData.targetWeightKg) || 68,
       trainingExperience: clientData.trainingExperience || 'Beginner',
       fitnessLevel: clientData.fitnessLevel || 'Beginner',
@@ -162,7 +176,7 @@ class Database {
       sessionsMissed: 0,
 
       planName: clientData.planName || 'Monthly Coaching',
-      monthlyPrice: Number(clientData.monthlyPrice) || 300,
+      monthlyPrice: Number(clientData.monthlyPrice) || 5000,
       billingCycle: clientData.billingCycle || 'Monthly',
       paymentStatus: clientData.paymentStatus || 'due',
       nextPaymentDate: clientData.nextPaymentDate || new Date(Date.now() + 30*24*3600*1000).toISOString().split('T')[0],
@@ -207,17 +221,50 @@ class Database {
     const idx = this.data.clients.findIndex(c => c.id === id);
     if (idx === -1) return null;
     
-    this.data.clients[idx] = { ...this.data.clients[idx], ...updates, id };
-    
-    // Update user record if name or email changed
-    const user = this.data.users.find(u => u.clientId === id);
-    if (user) {
-      if (updates.name) user.name = updates.name;
-      if (updates.email) user.email = updates.email;
-      if (updates.avatar) user.avatar = updates.avatar;
-      if (updates.phone) user.phone = updates.phone;
+    const existing = this.data.clients[idx];
+    const merged = { ...existing, ...updates, id };
+
+    // Ensure numeric fields stay numeric when updated
+    if (updates.heightCm !== undefined) merged.heightCm = Number(updates.heightCm) || 0;
+    if (updates.weightKg !== undefined) merged.weightKg = Number(updates.weightKg) || 0;
+    if (updates.startingWeightKg !== undefined) merged.startingWeightKg = Number(updates.startingWeightKg) || 0;
+    if (updates.targetWeightKg !== undefined) merged.targetWeightKg = Number(updates.targetWeightKg) || 0;
+    if (updates.dailyCalorieTarget !== undefined) merged.dailyCalorieTarget = Number(updates.dailyCalorieTarget) || 0;
+    if (updates.proteinTargetG !== undefined) merged.proteinTargetG = Number(updates.proteinTargetG) || 0;
+    if (updates.carbsTargetG !== undefined) merged.carbsTargetG = Number(updates.carbsTargetG) || 0;
+    if (updates.fatsTargetG !== undefined) merged.fatsTargetG = Number(updates.fatsTargetG) || 0;
+    if (updates.waterTargetMl !== undefined) merged.waterTargetMl = Number(updates.waterTargetMl) || 0;
+    if (updates.monthlyPrice !== undefined) merged.monthlyPrice = Number(updates.monthlyPrice) || 0;
+
+    if (updates.sessionsPurchased !== undefined || updates.sessionsCompleted !== undefined) {
+      merged.sessionsPurchased = Number(merged.sessionsPurchased) || 0;
+      merged.sessionsCompleted = Number(merged.sessionsCompleted) || 0;
+      merged.sessionsRemaining = Math.max(0, merged.sessionsPurchased - merged.sessionsCompleted);
     }
 
+    this.data.clients[idx] = merged;
+    
+    // Update companion user record if name, email, avatar, phone, or password changed
+    const user = this.data.users.find(u => u.clientId === id);
+    if (user) {
+      if (updates.name) user.name = updates.name.trim();
+      if (updates.email) user.email = updates.email.toLowerCase().trim();
+      if (updates.avatar) user.avatar = updates.avatar;
+      if (updates.phone !== undefined) user.phone = updates.phone;
+      if (updates.password && updates.password.trim()) {
+        user.password = updates.password.trim();
+        this.data.clients[idx].password = updates.password.trim();
+      }
+    }
+
+    // Propagate updated client name to sessions, payments, checkins
+    if (updates.name && updates.name !== existing.name) {
+      this.data.sessions.forEach(s => { if (s.clientId === id) s.clientName = updates.name; });
+      this.data.payments.forEach(p => { if (p.clientId === id) p.clientName = updates.name; });
+      this.data.checkins.forEach(c => { if (c.clientId === id) c.clientName = updates.name; });
+    }
+
+    this.addTimelineEvent(id, 'profile_updated', 'Client Profile Updated', 'Coach updated client profile & plan settings.');
     this.save();
     return this.data.clients[idx];
   }

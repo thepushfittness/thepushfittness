@@ -1,6 +1,7 @@
 // API Service Client for PushFitness
 
 const API_BASE = '/api';
+const SNAPSHOT_STORAGE_KEY = 'pushfitness_db_snapshot_v1';
 
 export function getAuthToken() {
   return localStorage.getItem('pushfitness_token') || '';
@@ -11,6 +12,44 @@ export function setAuthToken(token) {
     localStorage.setItem('pushfitness_token', token);
   } else {
     localStorage.removeItem('pushfitness_token');
+  }
+}
+
+export async function ensureServerSynced() {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    if (!raw) return;
+    const localSnapshot = JSON.parse(raw);
+    if (!localSnapshot || !localSnapshot.lastUpdatedAt) return;
+
+    const syncRes = await fetch(`${API_BASE}/system/sync`).then(r => r.ok ? r.json() : null).catch(() => null);
+    if (syncRes && (syncRes.lastUpdatedAt || 0) < localSnapshot.lastUpdatedAt) {
+      await fetch(`${API_BASE}/system/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshot: localSnapshot })
+      }).catch(() => null);
+    }
+  } catch (e) {
+    console.warn('Auto-sync check skipped:', e);
+  }
+}
+
+export async function backupServerSnapshot() {
+  try {
+    const token = getAuthToken();
+    if (!token) return;
+    const res = await fetch(`${API_BASE}/system/snapshot`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const snapshot = await res.json();
+      if (snapshot && Array.isArray(snapshot.users)) {
+        localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+      }
+    }
+  } catch (e) {
+    // Ignore if user is client or offline
   }
 }
 
@@ -54,17 +93,47 @@ async function request(endpoint, options = {}) {
     throw err;
   }
 
+  // Whenever a mutating request succeeds, back up the latest DB state locally
+  const method = (options.method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'DELETE'].includes(method) && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/admin/reset-db')) {
+    if (data?.token) {
+      setAuthToken(data.token);
+    }
+    backupServerSnapshot();
+  }
+
   return data;
 }
 
 export const api = {
   // Auth
-  login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
+  login: async (email, password) => {
+    await ensureServerSynced();
+    const res = await request('/auth/login', { method: 'POST', body: { email, password } });
+    if (res?.token) {
+      setAuthToken(res.token);
+      await backupServerSnapshot();
+    }
+    return res;
+  },
   forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: { email } }),
-  resetPassword: (email, newPassword) => request('/auth/reset-password', { method: 'POST', body: { email, newPassword } }),
-  updateProfile: (profileData) => request('/auth/profile', { method: 'PUT', body: profileData }),
+  resetPassword: async (email, newPassword) => {
+    await ensureServerSynced();
+    return request('/auth/reset-password', { method: 'POST', body: { email, newPassword } });
+  },
+  updateProfile: async (profileData) => {
+    const res = await request('/auth/profile', { method: 'PUT', body: profileData });
+    if (res?.token) {
+      setAuthToken(res.token);
+    }
+    await backupServerSnapshot();
+    return res;
+  },
   demoSwitch: (role, clientId = null) => request('/auth/demo-switch', { method: 'POST', body: { role, clientId } }),
-  getMe: () => request('/auth/me'),
+  getMe: async () => {
+    await ensureServerSynced();
+    return request('/auth/me');
+  },
 
   // Dashboard Analytics
   getAnalytics: (range = 'this_month') => request(`/dashboard/analytics?range=${range}`),

@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'pushfitness_super_secure_jwt_secret_key_2026';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 
 // --- Authentication Middleware & Data Isolation Guards ---
 
@@ -156,16 +156,31 @@ app.put('/api/auth/profile', authenticateToken, (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  if (name) user.name = name.trim();
-  if (email) user.email = email.toLowerCase().trim();
-  if (phone) user.phone = phone.trim();
-  if (avatar) user.avatar = avatar.trim();
-  if (password) user.password = password;
+  if (name && name.trim()) user.name = name.trim();
+  if (email && email.trim()) user.email = email.toLowerCase().trim();
+  if (phone !== undefined) user.phone = phone.trim();
+  if (avatar !== undefined) user.avatar = avatar.trim();
+  if (password && password.trim()) user.password = password.trim();
+
+  // If user is a client, also sync to client record
+  if (user.clientId) {
+    const client = db.getClientById(user.clientId);
+    if (client) {
+      if (name && name.trim()) client.name = name.trim();
+      if (email && email.trim()) client.email = email.toLowerCase().trim();
+      if (phone !== undefined) client.phone = phone.trim();
+      if (avatar !== undefined) client.avatar = avatar.trim();
+      if (password && password.trim()) client.password = password.trim();
+    }
+  }
 
   db.save();
+  const token = generateToken(user);
+
   res.json({
     success: true,
     message: 'Profile and credentials updated successfully',
+    token,
     user: {
       id: user.id,
       email: user.email,
@@ -695,6 +710,36 @@ app.post('/api/admin/reset-db', authenticateToken, requireTrainer, (req, res) =>
   res.json({ success: true, message: 'Database reset to initial demo seeds.' });
 });
 
+// --- Health & Persistent State Sync Endpoints ---
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', lastUpdatedAt: db.data.lastUpdatedAt || 0 });
+});
+
+app.get('/api/system/sync', (req, res) => {
+  res.json({
+    lastUpdatedAt: db.data.lastUpdatedAt || 0,
+    clientCount: db.data.clients?.length || 0
+  });
+});
+
+app.get('/api/system/snapshot', authenticateToken, requireTrainer, (req, res) => {
+  res.json(db.data);
+});
+
+app.post('/api/system/restore', (req, res) => {
+  const { snapshot } = req.body;
+  if (!snapshot || !Array.isArray(snapshot.users) || !Array.isArray(snapshot.clients)) {
+    return res.status(400).json({ error: 'Invalid snapshot payload' });
+  }
+  const serverTime = db.data.lastUpdatedAt || 0;
+  const incomingTime = snapshot.lastUpdatedAt || 0;
+  if (incomingTime > serverTime) {
+    db.restoreSnapshot(snapshot);
+    return res.json({ success: true, restored: true, lastUpdatedAt: incomingTime });
+  }
+  res.json({ success: true, restored: false, lastUpdatedAt: serverTime });
+});
+
 // Serve frontend built files in production mode
 if (fs.existsSync(DIST_PATH)) {
   app.use(express.static(DIST_PATH));
@@ -708,5 +753,13 @@ if (fs.existsSync(DIST_PATH)) {
 
 app.listen(PORT, () => {
   console.log(`PushFitness API Backend listening on http://localhost:${PORT}`);
+
+  // Keep Render Free Tier container warm so local db.json does not spin down
+  if (process.env.NODE_ENV === 'production') {
+    const PUBLIC_URL = process.env.RENDER_EXTERNAL_URL || 'https://thepushfittness.com';
+    setInterval(() => {
+      fetch(`${PUBLIC_URL}/api/health`).catch(() => {});
+    }, 10 * 60 * 1000);
+  }
 });
 

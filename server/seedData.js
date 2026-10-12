@@ -1,5 +1,6 @@
 // thepushfittness - Clean Production Initial State
 export const initialData = {
+  lastUpdatedAt: 0,
   users: [
     {
       id: "user-trainer-1",
