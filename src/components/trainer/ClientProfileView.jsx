@@ -3,6 +3,7 @@ import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { EditClientModal } from './EditClientModal';
 import { EditSessionModal } from './EditSessionModal';
+import { QuickConditioningModal } from './QuickConditioningModal';
 import { 
   User, 
   ArrowLeft, 
@@ -67,6 +68,10 @@ export function ClientProfileView({
   const [messages, setMessages] = useState([]);
   const [checkins, setCheckins] = useState([]);
   const [timeline, setTimeline] = useState([]);
+
+  // Conditioning modal state
+  const [showConditioningModal, setShowConditioningModal] = useState(false);
+  const [conditioningProgram, setConditioningProgram] = useState(null);
 
   // Modals & sub-states
   const [showEditClientModal, setShowEditClientModal] = useState(false);
@@ -728,8 +733,21 @@ export function ClientProfileView({
                       Goal: {prog.goal} • {prog.durationWeeks} Weeks • {prog.daysPerWeek}x weekly frequency
                     </p>
                   </div>
-                  <div className="text-xs text-slate-400">
-                    Cycle: {prog.startDate} to {prog.endDate}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        setConditioningProgram(prog);
+                        setShowConditioningModal(true);
+                      }}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold rounded-xl transition"
+                      title="Quick update today's conditioning routine"
+                    >
+                      <Flame className="w-3.5 h-3.5 text-amber-400" />
+                      <span>⚡ Update Today's Conditioning</span>
+                    </button>
+                    <span className="text-xs text-slate-400">
+                      Cycle: {prog.startDate} to {prog.endDate}
+                    </span>
                   </div>
                 </div>
 
@@ -780,7 +798,15 @@ export function ClientProfileView({
                                   {ex.sets} × {ex.reps}
                                 </td>
                                 <td className="py-2.5 px-3 font-semibold text-white">
-                                  {ex.targetWeightKg ? `${ex.targetWeightKg} kg` : 'Bodyweight'}
+                                  {ex.targetWeights && ex.targetWeights.length > 1 && new Set(ex.targetWeights).size > 1 ? (
+                                    <span className="text-emerald-400 font-mono">
+                                      {ex.targetWeights.join(' / ')} kg
+                                    </span>
+                                  ) : ex.targetWeightKg ? (
+                                    `${ex.targetWeightKg} kg`
+                                  ) : (
+                                    'Bodyweight'
+                                  )}
                                 </td>
                                 <td className="py-2.5 px-3 text-slate-300">{ex.rpe || 8}</td>
                                 <td className="py-2.5 px-3 text-slate-400">{ex.restSeconds}s</td>
@@ -810,6 +836,45 @@ export function ClientProfileView({
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Day Conditioning / Finisher Preview */}
+                      {day.conditioning && (
+                        <div className="bg-gradient-to-r from-amber-950/20 via-slate-900 to-slate-950 p-3.5 rounded-xl border border-amber-500/30 flex items-start justify-between gap-3 text-xs">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-amber-400 font-bold flex items-center space-x-1">
+                                <Flame className="w-4 h-4 text-amber-400" />
+                                <span>Finisher: {day.conditioning.title || day.conditioning.format}</span>
+                              </span>
+                              {day.conditioning.duration && (
+                                <span className="text-slate-400 text-[11px]">({day.conditioning.duration})</span>
+                              )}
+                              {day.conditioning.isDailyVariable && (
+                                <span className="bg-amber-500/10 text-amber-400 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/20">
+                                  ⚡ Updated on Training Day
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-200 whitespace-pre-line text-[11px] leading-relaxed">
+                              {day.conditioning.description}
+                            </p>
+                            {day.conditioning.notes && (
+                              <p className="text-amber-400/90 text-[10px] italic">
+                                Coach Cue: {day.conditioning.notes}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              setConditioningProgram(prog);
+                              setShowConditioningModal(true);
+                            }}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold whitespace-nowrap transition"
+                          >
+                            Edit Finisher
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -851,6 +916,35 @@ export function ClientProfileView({
                   </p>
                 )}
 
+                {/* Logged Conditioning Finisher if present */}
+                {log.conditioningCompleted && (
+                  <div className="bg-gradient-to-r from-amber-950/30 via-slate-950 to-slate-900 p-3 rounded-xl border border-amber-500/30 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-1.5 font-bold text-amber-300">
+                        <Flame className="w-4 h-4 text-amber-400" />
+                        <span>Conditioning Finisher: {log.conditioningCompleted.title || log.conditioningCompleted.format}</span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        log.conditioningCompleted.completed
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}>
+                        {log.conditioningCompleted.completed ? 'Completed ✓' : 'Partial'}
+                      </span>
+                    </div>
+                    {log.conditioningCompleted.result && (
+                      <div className="text-slate-200 text-xs">
+                        <strong className="text-amber-400">Result:</strong> {log.conditioningCompleted.result}
+                      </div>
+                    )}
+                    {log.conditioningCompleted.notes && (
+                      <div className="text-slate-400 text-[11px] italic">
+                        "{log.conditioningCompleted.notes}"
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Exercises logged */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {log.exercisesCompleted?.map((ex, exIdx) => (
@@ -866,6 +960,11 @@ export function ClientProfileView({
                           </div>
                         ))}
                       </div>
+                      {ex.notes && (
+                        <div className="text-[11px] text-amber-300 bg-amber-950/20 p-1.5 rounded border border-amber-900/30 mt-1">
+                          <strong>Client Note:</strong> {ex.notes}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1749,6 +1848,19 @@ export function ClientProfileView({
           </div>
         </div>
       )}
+
+      {/* QUICK CONDITIONING MODAL */}
+      <QuickConditioningModal
+        isOpen={showConditioningModal}
+        onClose={() => {
+          setShowConditioningModal(false);
+          setConditioningProgram(null);
+        }}
+        program={conditioningProgram}
+        onSave={() => {
+          loadClientData();
+        }}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { QuickConditioningModal } from './QuickConditioningModal';
 import { 
   Dumbbell, 
   Plus, 
@@ -14,7 +15,10 @@ import {
   Clock, 
   Sparkles,
   Layers,
-  FileCheck
+  FileCheck,
+  Flame,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 
 export function WorkoutManager({ onSelectClient }) {
@@ -23,6 +27,10 @@ export function WorkoutManager({ onSelectClient }) {
   const [clients, setClients] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Quick Conditioning Modal state
+  const [showConditioningModal, setShowConditioningModal] = useState(false);
+  const [conditioningProgram, setConditioningProgram] = useState(null);
 
   // Create / Edit program modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -120,6 +128,8 @@ export function WorkoutManager({ onSelectClient }) {
       sets: 3,
       reps: '10',
       targetWeightKg: 40,
+      targetWeights: [40, 40, 40],
+      isDifferentWeights: false,
       rpe: 8,
       restSeconds: 75,
       tempo: '3-1-1-0',
@@ -143,7 +153,28 @@ export function WorkoutManager({ onSelectClient }) {
     setDurationWeeks(prog.durationWeeks || 8);
     setDaysPerWeek(prog.daysPerWeek || 4);
     setProgramNotes(prog.notes || '');
-    setDays(JSON.parse(JSON.stringify(prog.days || [])));
+    const loadedDays = (prog.days || []).map(d => ({
+      ...d,
+      conditioning: d.conditioning || null,
+      exercises: (d.exercises || []).map(ex => {
+        const numSets = Number(ex.sets) || 3;
+        const targetWeights = (ex.targetWeights && ex.targetWeights.length === numSets)
+          ? ex.targetWeights
+          : Array(numSets).fill(ex.targetWeightKg || 0);
+        const isDifferentWeights = ex.isDifferentWeights !== undefined
+          ? ex.isDifferentWeights
+          : (targetWeights.length > 1 && new Set(targetWeights).size > 1);
+        return {
+          ...ex,
+          sets: numSets,
+          targetWeights,
+          isDifferentWeights,
+          targetWeightKg: targetWeights[0] || ex.targetWeightKg || 0,
+          notes: ex.notes || ''
+        };
+      })
+    }));
+    setDays(JSON.parse(JSON.stringify(loadedDays)));
     setShowCreateModal(true);
   };
 
@@ -165,6 +196,28 @@ export function WorkoutManager({ onSelectClient }) {
     }
 
     try {
+      const cleanedDays = days.map(d => ({
+        ...d,
+        conditioning: d.conditioning || null,
+        exercises: (d.exercises || []).map(ex => {
+          const numSets = Number(ex.sets) || 3;
+          let targetWeights = ex.targetWeights;
+          if (!targetWeights || targetWeights.length !== numSets) {
+            targetWeights = Array(numSets).fill(Number(ex.targetWeightKg) || 0);
+          } else {
+            targetWeights = targetWeights.map(w => Number(w) || 0);
+          }
+          return {
+            ...ex,
+            sets: numSets,
+            targetWeights,
+            isDifferentWeights: !!ex.isDifferentWeights,
+            targetWeightKg: targetWeights[0] || Number(ex.targetWeightKg) || 0,
+            notes: (ex.notes || '').trim()
+          };
+        })
+      }));
+
       if (editingProgramId) {
         const updated = await api.updateProgram(editingProgramId, {
           clientId: selectedClientId,
@@ -173,7 +226,7 @@ export function WorkoutManager({ onSelectClient }) {
           durationWeeks: Number(durationWeeks),
           daysPerWeek: Number(daysPerWeek),
           notes: programNotes,
-          days
+          days: cleanedDays
         });
         setPrograms(prev => prev.map(p => p.id === editingProgramId ? updated : p));
         showToast(`Program "${programName}" updated!`);
@@ -187,7 +240,7 @@ export function WorkoutManager({ onSelectClient }) {
           notes: programNotes,
           startDate: new Date().toISOString().split('T')[0],
           endDate: new Date(Date.now() + durationWeeks * 7 * 24 * 3600 * 1000).toISOString().split('T')[0],
-          days
+          days: cleanedDays
         });
         setPrograms(prev => [created, ...prev]);
         showToast(`Program "${programName}" created and assigned!`);
@@ -233,18 +286,33 @@ export function WorkoutManager({ onSelectClient }) {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingProgramId(null);
-            setProgramName('');
-            setProgramNotes('');
-            setShowCreateModal(true);
-          }}
-          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition transform active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create & Assign Program</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          {programs.length > 0 && (
+            <button
+              onClick={() => {
+                setConditioningProgram(programs[0]);
+                setShowConditioningModal(true);
+              }}
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs transition"
+            >
+              <Flame className="w-4 h-4 text-amber-400" />
+              <span>⚡ Update Today's Conditioning</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setEditingProgramId(null);
+              setProgramName('');
+              setProgramNotes('');
+              setShowCreateModal(true);
+            }}
+            className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition transform active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create & Assign Program</span>
+          </button>
+        </div>
       </div>
 
       {/* Program Templates Highlights */}
@@ -319,7 +387,18 @@ export function WorkoutManager({ onSelectClient }) {
                       </p>
                     </div>
 
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        onClick={() => {
+                          setConditioningProgram(prog);
+                          setShowConditioningModal(true);
+                        }}
+                        className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center space-x-1"
+                        title="Update Today's Conditioning for this Program"
+                      >
+                        <Flame className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold hidden sm:inline">Conditioning</span>
+                      </button>
                       <button
                         onClick={() => handleOpenEditProgram(prog)}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-400 transition"
@@ -357,7 +436,15 @@ export function WorkoutManager({ onSelectClient }) {
                     <div className="space-y-1.5">
                       {prog.days?.map((d) => (
                         <div key={d.id} className="flex justify-between items-center text-xs p-2 bg-slate-950/70 rounded-lg">
-                          <span className="font-medium text-slate-200">Day {d.dayNumber}: {d.name}</span>
+                          <div>
+                            <span className="font-medium text-slate-200">Day {d.dayNumber}: {d.name}</span>
+                            {d.conditioning && (
+                              <div className="flex items-center space-x-1 text-amber-400 text-[10px] font-semibold mt-0.5">
+                                <Flame className="w-3 h-3" />
+                                <span>Finisher: {d.conditioning.title || d.conditioning.format}</span>
+                              </div>
+                            )}
+                          </div>
                           <span className="text-slate-500">{d.exercises?.length || 0} exercises</span>
                         </div>
                       ))}
@@ -524,83 +611,313 @@ export function WorkoutManager({ onSelectClient }) {
                       </div>
 
                       {/* Exercises in this Day */}
-                      <div className="space-y-2">
-                        {d.exercises?.map((ex, exIdx) => (
-                          <div key={ex.id} className="bg-slate-900/80 p-3 rounded-lg border border-slate-800 grid grid-cols-2 sm:grid-cols-6 gap-2 items-center">
-                            <div className="col-span-2">
-                              <label className="text-[10px] text-slate-500 block">Exercise</label>
-                              <input
-                                type="text"
-                                value={ex.name}
-                                onChange={(e) => {
-                                  const updated = [...days];
-                                  updated[dIdx].exercises[exIdx].name = e.target.value;
-                                  setDays(updated);
-                                }}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-medium"
-                              />
+                      <div className="space-y-3">
+                        {d.exercises?.map((ex, exIdx) => {
+                          const numSets = Number(ex.sets) || 1;
+                          const currentWeights = Array.isArray(ex.targetWeights) && ex.targetWeights.length === numSets
+                            ? ex.targetWeights
+                            : Array(numSets).fill(Number(ex.targetWeightKg) || 0);
+                          const isDiff = !!ex.isDifferentWeights;
+
+                          return (
+                            <div key={ex.id} className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5">
+                              {/* Row 1: Exercise name, sets x reps, rest, toggle per-set vs same weight, and delete */}
+                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                                <div className="sm:col-span-5">
+                                  <label className="text-[10px] text-slate-500 font-semibold block">Exercise</label>
+                                  <input
+                                    type="text"
+                                    value={ex.name}
+                                    onChange={(e) => {
+                                      const updated = [...days];
+                                      updated[dIdx].exercises[exIdx].name = e.target.value;
+                                      setDays(updated);
+                                    }}
+                                    placeholder="e.g. Barbell Back Squat"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-medium text-xs"
+                                  />
+                                </div>
+
+                                <div className="sm:col-span-3">
+                                  <label className="text-[10px] text-slate-500 font-semibold block">Sets × Reps</label>
+                                  <input
+                                    type="text"
+                                    value={`${ex.sets}x${ex.reps}`}
+                                    onChange={(e) => {
+                                      const [s, r] = e.target.value.split('x');
+                                      const updated = [...days];
+                                      const newSetsCount = Number(s) || 3;
+                                      if (s) {
+                                        updated[dIdx].exercises[exIdx].sets = newSetsCount;
+                                        const existing = updated[dIdx].exercises[exIdx].targetWeights || [];
+                                        const lastW = existing[existing.length - 1] ?? updated[dIdx].exercises[exIdx].targetWeightKg ?? 0;
+                                        const newWeights = Array(newSetsCount).fill(0).map((_, i) => existing[i] !== undefined ? existing[i] : lastW);
+                                        updated[dIdx].exercises[exIdx].targetWeights = newWeights;
+                                      }
+                                      if (r !== undefined) updated[dIdx].exercises[exIdx].reps = r;
+                                      setDays(updated);
+                                    }}
+                                    placeholder="4x8-10"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-emerald-400 font-mono font-bold text-xs"
+                                  />
+                                </div>
+
+                                <div className="sm:col-span-2">
+                                  <label className="text-[10px] text-slate-500 font-semibold block">Rest (s)</label>
+                                  <input
+                                    type="number"
+                                    value={ex.restSeconds}
+                                    onChange={(e) => {
+                                      const updated = [...days];
+                                      updated[dIdx].exercises[exIdx].restSeconds = Number(e.target.value);
+                                      setDays(updated);
+                                    }}
+                                    placeholder="90"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white text-xs"
+                                  />
+                                </div>
+
+                                <div className="sm:col-span-2 flex items-center justify-end pt-3 sm:pt-0 space-x-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...days];
+                                      const toggled = !isDiff;
+                                      updated[dIdx].exercises[exIdx].isDifferentWeights = toggled;
+                                      if (!toggled) {
+                                        const baseW = currentWeights[0] || 0;
+                                        updated[dIdx].exercises[exIdx].targetWeightKg = baseW;
+                                        updated[dIdx].exercises[exIdx].targetWeights = Array(numSets).fill(baseW);
+                                      }
+                                      setDays(updated);
+                                    }}
+                                    className={`px-2 py-1 rounded text-[10px] font-bold transition flex items-center space-x-1 ${
+                                      isDiff 
+                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                                    }`}
+                                    title="Toggle between same weight for all sets vs different weights per set"
+                                  >
+                                    <Zap className="w-3 h-3" />
+                                    <span>{isDiff ? 'Per-Set' : 'Same Wt'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeExercise(dIdx, exIdx)}
+                                    className="p-1.5 text-slate-500 hover:text-red-400 rounded hover:bg-slate-800 transition"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Row 2: Weight Specification & Coach Notes beside sets */}
+                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1 border-t border-slate-800/60">
+                                <div className="sm:col-span-5 bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                      {isDiff ? '⚡ Weights Per Set (kg)' : '⚖️ Weight for All Sets (kg)'}
+                                    </span>
+                                    <span className="text-[9px] text-slate-500">
+                                      {isDiff ? `${numSets} custom weights` : 'uniform'}
+                                    </span>
+                                  </div>
+
+                                  {!isDiff ? (
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="number"
+                                        value={ex.targetWeightKg}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value);
+                                          const updated = [...days];
+                                          updated[dIdx].exercises[exIdx].targetWeightKg = val;
+                                          updated[dIdx].exercises[exIdx].targetWeights = Array(numSets).fill(val);
+                                          setDays(updated);
+                                        }}
+                                        className="w-20 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white font-bold text-xs"
+                                        placeholder="60"
+                                      />
+                                      <span className="text-xs text-slate-400">kg across all {numSets} sets</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {currentWeights.map((wVal, sIdx) => (
+                                        <div key={sIdx} className="flex items-center bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5">
+                                          <span className="text-[10px] text-slate-500 font-bold mr-1">S{sIdx + 1}:</span>
+                                          <input
+                                            type="number"
+                                            value={wVal}
+                                            onChange={(e) => {
+                                              const val = Number(e.target.value);
+                                              const updated = [...days];
+                                              const newW = [...currentWeights];
+                                              newW[sIdx] = val;
+                                              updated[dIdx].exercises[exIdx].targetWeights = newW;
+                                              if (sIdx === 0) updated[dIdx].exercises[exIdx].targetWeightKg = val;
+                                              setDays(updated);
+                                            }}
+                                            className="w-14 bg-transparent text-white font-bold text-xs focus:outline-none"
+                                            placeholder="kg"
+                                          />
+                                          <span className="text-[9px] text-slate-500">kg</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="sm:col-span-7 bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                                    📝 Notes / Cues / Modifications
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={ex.notes || ''}
+                                    onChange={(e) => {
+                                      const updated = [...days];
+                                      updated[dIdx].exercises[exIdx].notes = e.target.value;
+                                      setDays(updated);
+                                    }}
+                                    placeholder="e.g. Pause 2s at bottom, swap for DB if shoulder hurts, RPE 8 on final set"
+                                    className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <label className="text-[10px] text-slate-500 block">Sets × Reps</label>
-                              <input
-                                type="text"
-                                value={`${ex.sets}x${ex.reps}`}
-                                onChange={(e) => {
-                                  const [s, r] = e.target.value.split('x');
-                                  const updated = [...days];
-                                  if (s) updated[dIdx].exercises[exIdx].sets = Number(s) || 3;
-                                  if (r) updated[dIdx].exercises[exIdx].reps = r;
-                                  setDays(updated);
-                                }}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-emerald-400"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-slate-500 block">Target Wt (kg)</label>
-                              <input
-                                type="number"
-                                value={ex.targetWeightKg}
-                                onChange={(e) => {
-                                  const updated = [...days];
-                                  updated[dIdx].exercises[exIdx].targetWeightKg = Number(e.target.value);
-                                  setDays(updated);
-                                }}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-slate-500 block">Rest (s)</label>
-                              <input
-                                type="number"
-                                value={ex.restSeconds}
-                                onChange={(e) => {
-                                  const updated = [...days];
-                                  updated[dIdx].exercises[exIdx].restSeconds = Number(e.target.value);
-                                  setDays(updated);
-                                }}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white"
-                              />
-                            </div>
-                            <div className="flex items-center justify-end pt-3">
-                              <button
-                                type="button"
-                                onClick={() => removeExercise(dIdx, exIdx)}
-                                className="p-1 text-slate-500 hover:text-red-400"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => addExercise(dIdx)}
-                        className="text-xs text-emerald-400 hover:underline font-semibold"
-                      >
-                        + Add Exercise to this Day
-                      </button>
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          type="button"
+                          onClick={() => addExercise(dIdx)}
+                          className="text-xs text-emerald-400 hover:underline font-semibold flex items-center space-x-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Exercise to this Day</span>
+                        </button>
+                      </div>
+
+                      {/* Conditioning / Finisher for this day */}
+                      <div className="mt-3 pt-3 border-t border-slate-800/80">
+                        {d.conditioning ? (
+                          <div className="bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-950 border border-amber-500/40 rounded-xl p-3.5 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Flame className="w-4 h-4 text-amber-400" />
+                                <span className="text-xs font-bold text-amber-300">
+                                  Conditioning / Finisher: {d.conditioning.format || 'EMOM / AMRAP'}
+                                </span>
+                                {d.conditioning.isDailyVariable && (
+                                  <span className="bg-amber-500/10 text-amber-400 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
+                                    ⚡ Variable / Added on Day of Training
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...days];
+                                  updated[dIdx].conditioning = null;
+                                  setDays(updated);
+                                }}
+                                className="text-[10px] text-red-400 hover:underline font-semibold"
+                              >
+                                Remove
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">Title / Routine Name</label>
+                                <input
+                                  type="text"
+                                  value={d.conditioning.title || ''}
+                                  onChange={(e) => {
+                                    const updated = [...days];
+                                    updated[dIdx].conditioning = { ...updated[dIdx].conditioning, title: e.target.value };
+                                    setDays(updated);
+                                  }}
+                                  placeholder="e.g. 10-Min EMOM Finisher"
+                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-white font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">Duration / Time Cap</label>
+                                <input
+                                  type="text"
+                                  value={d.conditioning.duration || ''}
+                                  onChange={(e) => {
+                                    const updated = [...days];
+                                    updated[dIdx].conditioning = { ...updated[dIdx].conditioning, duration: e.target.value };
+                                    setDays(updated);
+                                  }}
+                                  placeholder="e.g. 10 mins / 12 mins cap"
+                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-white"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-0.5">Movements & Reps</label>
+                              <textarea
+                                rows={2}
+                                value={d.conditioning.description || ''}
+                                onChange={(e) => {
+                                  const updated = [...days];
+                                  updated[dIdx].conditioning = { ...updated[dIdx].conditioning, description: e.target.value };
+                                  setDays(updated);
+                                }}
+                                placeholder="e.g. Min 1: 15 Kettlebell swings (24kg), Min 2: 12 Burpees, Min 3: 200m Row"
+                                className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-200"
+                              />
+                            </div>
+
+                            <div className="flex items-center space-x-2 pt-1">
+                              <input
+                                type="checkbox"
+                                id={`daily-var-${dIdx}`}
+                                checked={d.conditioning.isDailyVariable !== false}
+                                onChange={(e) => {
+                                  const updated = [...days];
+                                  updated[dIdx].conditioning = { ...updated[dIdx].conditioning, isDailyVariable: e.target.checked };
+                                  setDays(updated);
+                                }}
+                                className="rounded text-amber-500 focus:ring-amber-500"
+                              />
+                              <label htmlFor={`daily-var-${dIdx}`} className="text-[11px] text-amber-300 font-medium cursor-pointer">
+                                Mark as dynamically added/updated on day of training
+                              </label>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-xs bg-slate-900/60 p-2.5 rounded-xl border border-dashed border-slate-800">
+                            <span className="text-slate-400">No conditioning finisher added for this day yet.</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...days];
+                                updated[dIdx].conditioning = {
+                                  format: '10-Min EMOM',
+                                  title: '10-Min EMOM Finisher',
+                                  duration: '10 mins',
+                                  description: 'Min 1: 15 Kettlebell Swings (24kg)\nMin 2: 12 Burpees\nMin 3: 15 Wall Balls',
+                                  notes: 'Maintain 75-80% sustained effort with 20s rest per minute.',
+                                  isDailyVariable: true,
+                                  lastUpdatedDate: new Date().toISOString().split('T')[0]
+                                };
+                                setDays(updated);
+                              }}
+                              className="text-amber-400 hover:text-amber-300 font-bold flex items-center space-x-1"
+                            >
+                              <Flame className="w-3.5 h-3.5" />
+                              <span>+ Add Conditioning / Finisher</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -625,6 +942,19 @@ export function WorkoutManager({ onSelectClient }) {
           </div>
         </div>
       )}
+
+      {/* QUICK CONDITIONING MODAL */}
+      <QuickConditioningModal
+        isOpen={showConditioningModal}
+        onClose={() => {
+          setShowConditioningModal(false);
+          setConditioningProgram(null);
+        }}
+        program={conditioningProgram}
+        onSave={() => {
+          loadAll();
+        }}
+      />
     </div>
   );
 }

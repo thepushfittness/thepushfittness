@@ -63,6 +63,10 @@ export function ClientApp() {
   // Active workout runner state
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [loggedSets, setLoggedSets] = useState({}); // { [exId]: [ { completed, reps, weightKg } ] }
+  const [exerciseNotes, setExerciseNotes] = useState({}); // { [exId]: string }
+  const [conditioningDone, setConditioningDone] = useState(false);
+  const [conditioningResult, setConditioningResult] = useState('');
+  const [conditioningNotes, setConditioningNotes] = useState('');
   const [workoutOverallNotes, setWorkoutOverallNotes] = useState('');
   const [workoutRpe, setWorkoutRpe] = useState(8);
 
@@ -148,7 +152,7 @@ export function ClientApp() {
           firstDay.exercises?.forEach(ex => {
             initSets[ex.id] = Array.from({ length: ex.sets || 3 }).map((_, i) => ({
               setNum: i + 1,
-              weightKg: ex.targetWeightKg || 0,
+              weightKg: (ex.targetWeights && ex.targetWeights[i] !== undefined) ? ex.targetWeights[i] : (ex.targetWeightKg || 0),
               reps: parseInt(ex.reps) || 10,
               completed: false,
               rpe: ex.rpe || 8
@@ -219,7 +223,8 @@ export function ClientApp() {
 
     const exercisesCompleted = currentDay.exercises.map(ex => ({
       exerciseName: ex.name,
-      sets: loggedSets[ex.id] || []
+      sets: loggedSets[ex.id] || [],
+      notes: (exerciseNotes[ex.id] || '').trim()
     }));
 
     const totalVolume = exercisesCompleted.reduce((sum, ex) => {
@@ -237,7 +242,15 @@ export function ClientApp() {
         totalVolumeKg: totalVolume,
         rpeOverall: workoutRpe,
         notes: workoutOverallNotes || 'Crushed it! Form felt crisp.',
-        exercisesCompleted
+        exercisesCompleted,
+        conditioningCompleted: currentDay.conditioning ? {
+          title: currentDay.conditioning.title || 'Conditioning Finisher',
+          format: currentDay.conditioning.format || 'EMOM',
+          duration: currentDay.conditioning.duration || '',
+          completed: conditioningDone,
+          result: conditioningResult || '',
+          notes: conditioningNotes || ''
+        } : null
       });
 
       // Celebration Confetti!
@@ -424,13 +437,16 @@ export function ClientApp() {
                     day.exercises?.forEach(ex => {
                       initSets[ex.id] = Array.from({ length: ex.sets || 3 }).map((_, i) => ({
                         setNum: i + 1,
-                        weightKg: ex.targetWeightKg || 0,
+                        weightKg: (ex.targetWeights && ex.targetWeights[i] !== undefined) ? ex.targetWeights[i] : (ex.targetWeightKg || 0),
                         reps: parseInt(ex.reps) || 10,
                         completed: false,
                         rpe: ex.rpe || 8
                       }));
                     });
                     setLoggedSets(initSets);
+                    setConditioningDone(false);
+                    setConditioningResult('');
+                    setConditioningNotes('');
                   }}
                   className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
                     activeDayIdx === idx
@@ -482,8 +498,21 @@ export function ClientApp() {
                             <h3 className="font-extrabold text-sm text-white mt-0.5">
                               {ex.name}
                             </h3>
-                            <div className="flex items-center space-x-2 text-xs text-slate-400 mt-1">
-                              <span>Target: {ex.sets} × {ex.reps}</span>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400 mt-1">
+                              <span>
+                                Target: {ex.sets} × {ex.reps}
+                                {ex.targetWeights && ex.targetWeights.length > 1 && new Set(ex.targetWeights).size > 1 ? (
+                                  <strong className="text-emerald-400 font-mono ml-1">
+                                    ({ex.targetWeights.join(' / ')} kg)
+                                  </strong>
+                                ) : ex.targetWeightKg ? (
+                                  <strong className="text-emerald-400 font-mono ml-1">
+                                    ({ex.targetWeightKg} kg)
+                                  </strong>
+                                ) : (
+                                  <span className="text-slate-500 ml-1">(BW)</span>
+                                )}
+                              </span>
                               <span>•</span>
                               <span>Rest: {ex.restSeconds}s</span>
                               <span>•</span>
@@ -565,10 +594,116 @@ export function ClientApp() {
                             </div>
                           ))}
                         </div>
+
+                        {/* Client execution note beside sets & reps */}
+                        <div className="pt-2 border-t border-slate-900">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-semibold text-slate-400">
+                              📝 Notes for Coach / Variations performed
+                            </label>
+                            {exerciseNotes[ex.id] && (
+                              <span className="text-[9px] text-emerald-400 font-semibold">Note saved</span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Performed differently than planned? (e.g. Used dumbbells, dropped weight on set 3)"
+                            value={exerciseNotes[ex.id] || ''}
+                            onChange={(e) => setExerciseNotes(prev => ({ ...prev, [ex.id]: e.target.value }))}
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
                       </div>
                     );
                   })}
                 </div>
+
+                {/* TODAY'S CONDITIONING FINISHER SECTION */}
+                {program.days[activeDayIdx]?.conditioning && (
+                  <div className="bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/40 rounded-3xl p-5 shadow-xl space-y-4">
+                    <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1">
+                            <Flame className="w-3 h-3 text-amber-400" />
+                            <span>{program.days[activeDayIdx].conditioning.format || 'Conditioning Finisher'}</span>
+                          </span>
+                          {program.days[activeDayIdx].conditioning.isDailyVariable && (
+                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              ⚡ Added on Training Day by Coach Pushkar
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-extrabold text-base text-white">
+                          {program.days[activeDayIdx].conditioning.title || "Today's Conditioning Finisher"}
+                        </h3>
+                        {program.days[activeDayIdx].conditioning.duration && (
+                          <p className="text-xs text-amber-400 font-semibold flex items-center space-x-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Time Cap / Duration: {program.days[activeDayIdx].conditioning.duration}</span>
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setConditioningDone(prev => !prev)}
+                        className={`px-3.5 py-2 rounded-xl font-bold text-xs transition flex items-center space-x-1.5 shadow-sm ${
+                          conditioningDone
+                            ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/20'
+                            : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>{conditioningDone ? 'Completed ✓' : 'Mark Done'}</span>
+                      </button>
+                    </div>
+
+                    {/* Conditioning movements & instructions */}
+                    <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-1.5">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        Movements & Routine
+                      </span>
+                      <p className="text-xs text-slate-200 whitespace-pre-line font-medium leading-relaxed">
+                        {program.days[activeDayIdx].conditioning.description || 'Follow coach instructions.'}
+                      </p>
+                    </div>
+
+                    {program.days[activeDayIdx].conditioning.notes && (
+                      <div className="p-3 bg-amber-950/20 rounded-xl border border-amber-900/30 text-xs text-amber-300 italic">
+                        💡 Coach Pacing Cue: {program.days[activeDayIdx].conditioning.notes}
+                      </div>
+                    )}
+
+                    {/* Result and reflection */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
+                          Your Result / Score
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 5 rounds + 8 reps, 8:45 time, or Level 9"
+                          value={conditioningResult}
+                          onChange={(e) => setConditioningResult(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
+                          Conditioning Feedback
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Kept steady pace, lungs burning"
+                          value={conditioningNotes}
+                          onChange={(e) => setConditioningNotes(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Workout Reflection & Finish Button */}
                 <div className="space-y-3 pt-4 border-t border-slate-800">
