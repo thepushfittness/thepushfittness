@@ -68,7 +68,7 @@ export function TrainerDashboard({
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center space-y-3">
           <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm font-medium">Loading Coach Alex's Command Center...</p>
+          <p className="text-slate-400 text-sm font-medium">Loading Coach Pushkar's Command Center...</p>
         </div>
       </div>
     );

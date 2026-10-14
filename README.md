@@ -7,7 +7,7 @@ A modern, responsive, production-ready SaaS application designed for personal tr
 ## 🌟 Key Architecture & Highlights
 
 ### 1. Two Separate User Roles with Strict Data Isolation
-* **TRAINER / ADMIN (`alex.trainer@pushfitness.io` / `password123`)**:
+* **TRAINER / ADMIN (`admin@thepushfittness.com` / `admin123`)**:
   * Unified command center with live business intelligence.
   * Search, filter, archive, restore, and delete clients.
   * Program builder with exercise libraries, target weights, tempo, rest timer intervals, and video demos.
@@ -57,7 +57,7 @@ The app comes preloaded with realistic demo data and includes an **instant Role 
 
 | Role | Name | Email | Password | Notable Features |
 |---|---|---|---|---|
-| **Trainer** | Coach Alex Rivera | `alex.trainer@pushfitness.io` | `password123` | Full Admin Dashboard, Revenue, Needs Attention Radar |
+| **Trainer** | Coach Pushkar Mayekar | `admin@thepushfittness.com` | `admin123` | Full Admin Dashboard, Revenue, Needs Attention Radar |
 | **Client** | Sarah Chen | `sarah.chen@gmail.com` | `password123` | Active client, 92% adherence, 10/12 sessions used, Paid |
 | **Client** | Marcus Vance | `marcus.vance@gmail.com` | `password123` | Strength athlete, 5x5 lifting, 96% adherence, PRs |
 | **Client** | David Miller | `david.miller@gmail.com` | `password123` | ⚠️ Needs Attention: Payment overdue ($350), 5 days inactive |

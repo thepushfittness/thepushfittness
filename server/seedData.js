@@ -5,7 +5,7 @@ export const initialData = {
     {
       id: "user-trainer-1",
       email: "admin@thepushfittness.com",
-      name: "Coach Pushkar",
+      name: "Coach Pushkar Mayekar",
       role: "trainer",
       password: "admin123",
       phone: "+91 98765 43210",

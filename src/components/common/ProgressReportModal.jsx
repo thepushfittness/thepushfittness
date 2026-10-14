@@ -70,7 +70,7 @@ export function ProgressReportModal({ clientId, isOpen, onClose }) {
                     thepush<span className="text-emerald-400">fittness</span>
                   </div>
                   <p className="text-xs text-slate-400">Elite Personal Training & Athletic Development</p>
-                  <p className="text-xs text-slate-400">Coach: Alex Rivera • alex.trainer@thepushfittness.com</p>
+                  <p className="text-xs text-slate-400">Coach: Pushkar Mayekar • admin@thepushfittness.com</p>
                 </div>
                 <div className="text-right">
                   <span className="text-xs uppercase font-bold text-emerald-400 block">Progress Report</span>
@@ -184,9 +184,9 @@ export function ProgressReportModal({ clientId, isOpen, onClose }) {
                 </div>
               )}
 
-              {/* Coach Alex Evaluation Summary */}
+              {/* Coach Pushkar Evaluation Summary */}
               <div className="p-4 bg-emerald-950/20 border border-emerald-800/40 rounded-2xl text-xs space-y-1">
-                <span className="font-bold text-emerald-400 block">Coach Alex Summary & Next Phase Roadmap:</span>
+                <span className="font-bold text-emerald-400 block">Coach Pushkar Mayekar Summary & Next Phase Roadmap:</span>
                 <p className="text-slate-300 leading-relaxed">
                   {report.client.name} has shown remarkable dedication with a {report.summary.workoutAdherence}% workout compliance rate and consistent progressive overload. In the upcoming phase, we will focus on consolidating strength on primary compound lifts while fine-tuning daily macronutrient timing. Keep pushing!
                 </p>

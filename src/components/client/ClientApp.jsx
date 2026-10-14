@@ -279,7 +279,7 @@ export function ClientApp() {
       });
       setMessages(prev => [...prev, msg]);
       setChatMessage('');
-      showToast('Message sent to Coach Alex');
+      showToast('Message sent to Coach Pushkar');
     } catch (err) {
       showToast('Failed to send message', 'error');
     }
@@ -306,7 +306,7 @@ export function ClientApp() {
 
       setCheckins(prev => [submitted, ...prev]);
       setShowCheckinModal(false);
-      showToast('Weekly check-in submitted to Coach Alex! 🎉');
+      showToast('Weekly check-in submitted to Coach Pushkar! 🎉');
       refreshMe();
     } catch (err) {
       showToast('Failed to submit check-in', 'error');
@@ -586,7 +586,7 @@ export function ClientApp() {
 
                   <input
                     type="text"
-                    placeholder="How did today's workout feel? Any soreness or notes for Coach Alex?"
+                    placeholder="How did today's workout feel? Any soreness or notes for Coach Pushkar?"
                     value={workoutOverallNotes}
                     onChange={(e) => setWorkoutOverallNotes(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
@@ -603,7 +603,7 @@ export function ClientApp() {
             </div>
           ) : (
             <div className="p-12 text-center bg-slate-900 rounded-3xl border border-slate-800">
-              <p className="text-xs text-slate-400">No workout assigned today. Ask Coach Alex in the chat!</p>
+              <p className="text-xs text-slate-400">No workout assigned today. Ask Coach Pushkar in the chat!</p>
             </div>
           )}
         </div>
@@ -848,10 +848,10 @@ export function ClientApp() {
             {/* Header */}
             <div className="flex items-center space-x-3 pb-3 border-b border-slate-800">
               <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-slate-950">
-                CA
+                PM
               </div>
               <div>
-                <h3 className="font-bold text-sm text-white">Coach Alex Rivera</h3>
+                <h3 className="font-bold text-sm text-white">Coach Pushkar Mayekar</h3>
                 <span className="text-[10px] text-emerald-400">Head Coach • Typically replies within 1 hour</span>
               </div>
             </div>
@@ -879,7 +879,7 @@ export function ClientApp() {
             <form onSubmit={handleSendChatMessage} className="pt-2 border-t border-slate-800 flex gap-2">
               <input
                 type="text"
-                placeholder="Ask Coach Alex a question..."
+                placeholder="Ask Coach Pushkar a question..."
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
                 className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -902,7 +902,7 @@ export function ClientApp() {
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-white">Weekly Client Accountability Check-in</h3>
-                <p className="text-xs text-slate-400">Share your wellness and training progress with Coach Alex</p>
+                <p className="text-xs text-slate-400">Share your wellness and training progress with Coach Pushkar</p>
               </div>
               <button
                 onClick={() => setShowCheckinModal(false)}

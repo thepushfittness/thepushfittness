@@ -200,7 +200,7 @@ export function CheckinManager({ onSelectClient }) {
               {/* Coach Feedback Form */}
               <form onSubmit={handleSubmitFeedback} className="space-y-3 pt-3 border-t border-slate-800">
                 <label className="text-xs font-bold text-white block">
-                  Coach Alex Feedback & Next Steps:
+                  Coach Pushkar Feedback & Next Steps:
                 </label>
                 <textarea
                   rows={4}

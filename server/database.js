@@ -329,7 +329,7 @@ class Database {
           userId: user.id,
           role: 'client',
           title: 'New Program Assigned!',
-          message: `Coach Alex assigned you "${newProgram.name}". Check out your workouts!`,
+          message: `Coach Pushkar assigned you "${newProgram.name}". Check out your workouts!`,
           type: 'workout',
           link: '/workouts'
         });
@@ -771,7 +771,7 @@ class Database {
         this.addNotification({
           userId: user.id,
           role: 'client',
-          title: 'Message from Coach Alex',
+          title: 'Message from Coach Pushkar',
           message: newMsg.text.slice(0, 60),
           type: 'message',
           link: '/messages'
@@ -857,7 +857,7 @@ class Database {
         userId: user.id,
         role: 'client',
         title: 'Check-in Reviewed by Coach',
-        message: `Coach Alex left feedback on your weekly check-in: "${feedback.slice(0, 50)}..."`,
+        message: `Coach Pushkar left feedback on your weekly check-in: "${feedback.slice(0, 50)}..."`,
         type: 'checkin',
         link: '/checkin'
       });

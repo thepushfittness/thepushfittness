@@ -1262,7 +1262,7 @@ export function ClientProfileView({
                       <p>{m.text}</p>
                     </div>
                     <span className="text-[9px] text-slate-500 mt-1 px-1">
-                      {isCoach ? 'Coach Alex' : client.name} • {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {isCoach ? 'Coach Pushkar' : client.name} • {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 );
@@ -1341,7 +1341,7 @@ export function ClientProfileView({
                 {/* Trainer Feedback Box */}
                 {chk.trainerFeedback ? (
                   <div className="p-3.5 bg-emerald-950/30 border border-emerald-800/40 rounded-xl text-xs space-y-1">
-                    <span className="font-bold text-emerald-400 block">Coach Alex Feedback:</span>
+                    <span className="font-bold text-emerald-400 block">Coach Pushkar Feedback:</span>
                     <p className="text-slate-200 leading-relaxed">{chk.trainerFeedback}</p>
                   </div>
                 ) : (
