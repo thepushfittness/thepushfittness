@@ -508,28 +508,52 @@ class Database {
     const idx = this.data.sessions.findIndex(s => s.id === id);
     if (idx === -1) return null;
     const oldSession = this.data.sessions[idx];
-    const updated = { ...oldSession, ...updates, id };
+
+    const targetClientId = updates.clientId || oldSession.clientId;
+    const targetClient = this.getClientById(targetClientId);
+    const clientName = targetClient ? targetClient.name : (updates.clientName || oldSession.clientName);
+
+    const updated = { 
+      ...oldSession, 
+      ...updates, 
+      id, 
+      clientId: targetClientId,
+      clientName,
+      durationMinutes: updates.durationMinutes !== undefined ? Number(updates.durationMinutes) : (oldSession.durationMinutes || 60)
+    };
     this.data.sessions[idx] = updated;
 
-    const client = this.getClientById(updated.clientId);
-    if (client) {
-      // Recalculate session counts for client
-      const clientSessions = this.data.sessions.filter(s => s.clientId === client.id);
-      client.sessionsCompleted = clientSessions.filter(s => s.status === 'completed').length;
-      client.sessionsCancelled = clientSessions.filter(s => s.status === 'cancelled').length;
-      client.sessionsMissed = clientSessions.filter(s => s.status === 'no-show').length;
-      client.sessionsRemaining = Math.max(0, (client.sessionsPurchased || 0) - client.sessionsCompleted);
+    // Recalculate session counts for target client
+    if (targetClient) {
+      const clientSessions = this.data.sessions.filter(s => s.clientId === targetClient.id);
+      targetClient.sessionsCompleted = clientSessions.filter(s => s.status === 'completed').length;
+      targetClient.sessionsCancelled = clientSessions.filter(s => s.status === 'cancelled').length;
+      targetClient.sessionsMissed = clientSessions.filter(s => s.status === 'no-show').length;
+      targetClient.sessionsRemaining = Math.max(0, (targetClient.sessionsPurchased || 0) - targetClient.sessionsCompleted);
 
       if (updates.status === 'completed' && oldSession.status !== 'completed') {
-        client.lastSessionDate = updated.date;
+        targetClient.lastSessionDate = updated.date;
         this.addTimelineEvent(
-          client.id,
+          targetClient.id,
           'session_completed',
           'Training Session Completed',
           `${updated.sessionType} at ${updated.location || 'Studio'} completed.`
         );
       }
-      this.recalculateClientAdherence(client.id);
+      this.recalculateClientAdherence(targetClient.id);
+    }
+
+    // If client was changed, also recalculate old client
+    if (oldSession.clientId && oldSession.clientId !== targetClientId) {
+      const oldClient = this.getClientById(oldSession.clientId);
+      if (oldClient) {
+        const oldClientSessions = this.data.sessions.filter(s => s.clientId === oldClient.id);
+        oldClient.sessionsCompleted = oldClientSessions.filter(s => s.status === 'completed').length;
+        oldClient.sessionsCancelled = oldClientSessions.filter(s => s.status === 'cancelled').length;
+        oldClient.sessionsMissed = oldClientSessions.filter(s => s.status === 'no-show').length;
+        oldClient.sessionsRemaining = Math.max(0, (oldClient.sessionsPurchased || 0) - oldClient.sessionsCompleted);
+        this.recalculateClientAdherence(oldClient.id);
+      }
     }
 
     this.save();
@@ -537,7 +561,20 @@ class Database {
   }
 
   deleteSession(id) {
+    const session = this.data.sessions.find(s => s.id === id);
+    if (!session) return false;
     this.data.sessions = this.data.sessions.filter(s => s.id !== id);
+
+    const client = this.getClientById(session.clientId);
+    if (client) {
+      const clientSessions = this.data.sessions.filter(s => s.clientId === client.id);
+      client.sessionsCompleted = clientSessions.filter(s => s.status === 'completed').length;
+      client.sessionsCancelled = clientSessions.filter(s => s.status === 'cancelled').length;
+      client.sessionsMissed = clientSessions.filter(s => s.status === 'no-show').length;
+      client.sessionsRemaining = Math.max(0, (client.sessionsPurchased || 0) - client.sessionsCompleted);
+      this.recalculateClientAdherence(client.id);
+    }
+
     this.save();
     return true;
   }

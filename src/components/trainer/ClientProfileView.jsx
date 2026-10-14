@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { EditClientModal } from './EditClientModal';
+import { EditSessionModal } from './EditSessionModal';
 import { 
   User, 
   ArrowLeft, 
@@ -85,9 +86,69 @@ export function ClientProfileView({
   const [selectedCheckin, setSelectedCheckin] = useState(null);
   const [trainerFeedbackText, setTrainerFeedbackText] = useState('');
 
+  // Session edit & delete states
+  const [editingSession, setEditingSession] = useState(null);
+  const [deletingSession, setDeletingSession] = useState(null);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const [showBookSessionModal, setShowBookSessionModal] = useState(false);
+  const [bookDate, setBookDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bookTime, setBookTime] = useState('09:00 AM');
+  const [bookDuration, setBookDuration] = useState(60);
+  const [bookLocation, setBookLocation] = useState('Apex Fitness Studio');
+  const [bookType, setBookType] = useState('1-on-1 In-Person');
+  const [bookNotes, setBookNotes] = useState('');
+
   const openEditClient = (step = 1) => {
     setEditClientStep(step);
     setShowEditClientModal(true);
+  };
+
+  const handleCreateSessionInProfile = async (e) => {
+    e.preventDefault();
+    if (!client) return;
+
+    try {
+      const created = await api.createSession({
+        clientId: client.id,
+        clientName: client.name,
+        date: bookDate,
+        time: bookTime,
+        durationMinutes: Number(bookDuration),
+        location: bookLocation,
+        sessionType: bookType,
+        notes: bookNotes,
+        status: 'scheduled'
+      });
+      setSessions(prev => [created, ...prev]);
+      setShowBookSessionModal(false);
+      showToast(`Booked session for ${client.name} on ${bookDate} at ${bookTime}!`);
+      api.getClient(client.id).then(setClient);
+    } catch (err) {
+      showToast('Failed to book session', 'error');
+    }
+  };
+
+  const handleSaveEditedSession = (updated) => {
+    setSessions(prev => prev.map(s => s.id === updated.id ? updated : s));
+    setEditingSession(null);
+    if (client) api.getClient(client.id).then(setClient);
+  };
+
+  const handleConfirmDeleteSession = async () => {
+    if (!deletingSession) return;
+    try {
+      setIsDeletingSession(true);
+      await api.deleteSession(deletingSession.id);
+      setSessions(prev => prev.filter(s => s.id !== deletingSession.id));
+      showToast('Session deleted. Client package credits recalculated.');
+      setDeletingSession(null);
+      if (client) api.getClient(client.id).then(setClient);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to delete session', 'error');
+    } finally {
+      setIsDeletingSession(false);
+    }
   };
 
   const loadClientData = async () => {
@@ -870,18 +931,22 @@ export function ClientProfileView({
       {/* 5. SESSIONS TAB */}
       {activeTab === 'sessions' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-white">Training Sessions Management</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <Calendar className="w-5 h-5 text-cyan-400" />
+                <span>Training Sessions Management</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
                 Package Balance: <strong className="text-emerald-400">{client.sessionsRemaining} Sessions Remaining</strong> (Used {client.sessionsCompleted} of {client.sessionsPurchased})
               </p>
             </div>
             <button
-              onClick={() => onOpenSchedule(client.id)}
-              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm"
+              onClick={() => setShowBookSessionModal(true)}
+              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5 self-start sm:self-auto"
             >
-              + Schedule New Session
+              <Plus className="w-4 h-4" />
+              <span>Schedule New Session</span>
             </button>
           </div>
 
@@ -895,31 +960,68 @@ export function ClientProfileView({
                     <th className="py-3 px-4">Location</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Trainer Notes</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {sessions.map((sess) => (
-                    <tr key={sess.id} className="hover:bg-slate-800/50">
-                      <td className="py-3 px-4 font-semibold text-white">
-                        <div>{sess.date}</div>
-                        <div className="text-[11px] text-slate-500">{sess.time} ({sess.durationMinutes}m)</div>
+                  {sessions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-500">
+                        <Calendar className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                        <p className="font-semibold text-slate-300">No sessions scheduled for {client.name} yet</p>
+                        <button
+                          onClick={() => setShowBookSessionModal(true)}
+                          className="mt-3 text-xs text-emerald-400 hover:underline font-bold"
+                        >
+                          + Book First Session Now
+                        </button>
                       </td>
-                      <td className="py-3 px-4 text-slate-200">{sess.sessionType}</td>
-                      <td className="py-3 px-4 text-slate-400">{sess.location}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          sess.status === 'completed'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : sess.status === 'scheduled'
-                            ? 'bg-cyan-500/20 text-cyan-400'
-                            : 'bg-red-500/20 text-red-400'
-                        }`}>
-                          {sess.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-400 text-[11px]">{sess.notes || '—'}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    sessions.map((sess) => (
+                      <tr key={sess.id} className="hover:bg-slate-800/50 transition">
+                        <td className="py-3 px-4 font-semibold text-white">
+                          <div className="flex items-center space-x-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>{sess.date}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">{sess.time} ({sess.durationMinutes || 60}m)</div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-200">{sess.sessionType}</td>
+                        <td className="py-3 px-4 text-slate-400">{sess.location}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            sess.status === 'completed'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : sess.status === 'scheduled'
+                              ? 'bg-cyan-500/20 text-cyan-400'
+                              : 'bg-red-500/20 text-red-400'
+                          }`}>
+                            {sess.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-400 text-[11px] max-w-xs truncate">{sess.notes || '—'}</td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              onClick={() => setEditingSession(sess)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition"
+                              title="Edit Date, Timings & Details"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingSession(sess)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                              title="Delete Session"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1470,6 +1572,183 @@ export function ClientProfileView({
           setClient(updated);
         }}
       />
+
+      {/* Edit Session Modal */}
+      <EditSessionModal
+        isOpen={!!editingSession}
+        session={editingSession}
+        clients={[client]}
+        onClose={() => setEditingSession(null)}
+        onSave={handleSaveEditedSession}
+        onDelete={(id) => {
+          setSessions(prev => prev.filter(s => s.id !== id));
+          setEditingSession(null);
+          if (client) api.getClient(client.id).then(setClient);
+        }}
+      />
+
+      {/* Book Session for Client Modal */}
+      {showBookSessionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 my-8 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                <Calendar className="w-5 h-5 text-emerald-400" />
+                <span>Schedule Session for {client.name}</span>
+              </h3>
+              <button 
+                onClick={() => setShowBookSessionModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSessionInProfile} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={bookDate}
+                    onChange={(e) => setBookDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Time</label>
+                  <input
+                    type="text"
+                    placeholder="09:00 AM"
+                    value={bookTime}
+                    onChange={(e) => setBookTime(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Session Type</label>
+                  <select
+                    value={bookType}
+                    onChange={(e) => setBookType(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  >
+                    <option value="1-on-1 In-Person">1-on-1 In-Person</option>
+                    <option value="Strength Technique Check">Strength Technique Check</option>
+                    <option value="Conditioning & Mobility">Conditioning & Mobility</option>
+                    <option value="Virtual Assessment">Virtual Assessment</option>
+                    <option value="Nutrition & Habit Review">Nutrition & Habit Review</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Duration (mins)</label>
+                  <input
+                    type="number"
+                    value={bookDuration}
+                    onChange={(e) => setBookDuration(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Location</label>
+                <input
+                  type="text"
+                  value={bookLocation}
+                  onChange={(e) => setBookLocation(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Coach Notes</label>
+                <textarea
+                  rows={2}
+                  placeholder="Focus points, movements to test..."
+                  value={bookNotes}
+                  onChange={(e) => setBookNotes(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowBookSessionModal(false)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-semibold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-450 transition"
+                >
+                  Confirm Booking
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Session Confirmation Modal */}
+      {deletingSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center space-x-3 text-red-400">
+              <div className="p-3 bg-red-500/10 rounded-2xl border border-red-500/20">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Session?</h3>
+                <p className="text-slate-400 text-xs">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Client:</span>
+                <span className="font-bold text-white">{client.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Date & Time:</span>
+                <span className="font-bold text-cyan-400">{deletingSession.date} at {deletingSession.time}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Type:</span>
+                <span className="text-slate-300">{deletingSession.sessionType}</span>
+              </div>
+            </div>
+
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              Deleting this session will remove it from the coaching calendar and automatically recalculate <strong>{client.name}'s</strong> package session credits.
+            </p>
+
+            <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeletingSession(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteSession}
+                disabled={isDeletingSession}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-red-600/30 transition disabled:opacity-50"
+              >
+                {isDeletingSession ? 'Deleting...' : 'Yes, Delete Session'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
