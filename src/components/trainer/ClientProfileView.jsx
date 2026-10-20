@@ -790,8 +790,11 @@ export function ClientProfileView({
                               <tr key={ex.id} className="hover:bg-slate-900/50">
                                 <td className="py-2.5 px-3">
                                   <div className="font-semibold text-white">{ex.name}</div>
+                                  {ex.notes && (
+                                    <div className="text-[10px] text-amber-300/90 italic mt-0.5">📝 {ex.notes}</div>
+                                  )}
                                   {ex.alternative && (
-                                    <div className="text-[10px] text-slate-500">Alt: {ex.alternative}</div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">Alt: {ex.alternative}</div>
                                   )}
                                 </td>
                                 <td className="py-2.5 px-3 font-medium text-emerald-400">
@@ -803,7 +806,9 @@ export function ClientProfileView({
                                       {ex.targetWeights.join(' / ')} kg
                                     </span>
                                   ) : ex.targetWeightKg ? (
-                                    `${ex.targetWeightKg} kg`
+                                    (typeof ex.targetWeightKg === 'number' || /^\d+(\.\d+)?$/.test(ex.targetWeightKg))
+                                      ? `${ex.targetWeightKg} kg`
+                                      : ex.targetWeightKg
                                   ) : (
                                     'Bodyweight'
                                   )}

@@ -216,6 +216,32 @@ export function ClientApp() {
     });
   };
 
+  // Add set dynamically during workout
+  const handleAddSet = (exId) => {
+    setLoggedSets(prev => {
+      const current = prev[exId] || [];
+      const lastSet = current[current.length - 1];
+      const newSetNum = current.length + 1;
+      const newSet = {
+        setNum: newSetNum,
+        weightKg: lastSet ? lastSet.weightKg : 0,
+        reps: lastSet ? lastSet.reps : 10,
+        completed: false,
+        rpe: 8
+      };
+      return { ...prev, [exId]: [...current, newSet] };
+    });
+  };
+
+  // Remove last set if not needed
+  const handleRemoveSet = (exId) => {
+    setLoggedSets(prev => {
+      const current = prev[exId] || [];
+      if (current.length <= 1) return prev;
+      return { ...prev, [exId]: current.slice(0, -1) };
+    });
+  };
+
   // Submit complete workout
   const handleFinishWorkout = async () => {
     if (!program || !program.days?.[activeDayIdx]) return;
@@ -507,7 +533,7 @@ export function ClientApp() {
                                   </strong>
                                 ) : ex.targetWeightKg ? (
                                   <strong className="text-emerald-400 font-mono ml-1">
-                                    ({ex.targetWeightKg} kg)
+                                    ({ex.targetWeightKg}{typeof ex.targetWeightKg === 'number' || /^\d+(\.\d+)?$/.test(ex.targetWeightKg) ? ' kg' : ''})
                                   </strong>
                                 ) : (
                                   <span className="text-slate-500 ml-1">(BW)</span>
@@ -593,6 +619,27 @@ export function ClientApp() {
                               </div>
                             </div>
                           ))}
+
+                          {/* Flexible Set Controls */}
+                          <div className="flex items-center space-x-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleAddSet(ex.id)}
+                              className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800 rounded-lg text-xs font-semibold flex items-center space-x-1 transition"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Add Set</span>
+                            </button>
+                            {exSets.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSet(ex.id)}
+                                className="px-2.5 py-1 bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-red-400 border border-slate-800/60 rounded-lg text-xs transition"
+                              >
+                                Remove Last Set
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Client execution note beside sets & reps */}
