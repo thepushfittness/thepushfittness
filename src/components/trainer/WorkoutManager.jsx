@@ -100,6 +100,30 @@ export function WorkoutManager({ onSelectClient }) {
     loadAll();
   }, []);
 
+  const createFreshDay = (num = 1) => ({
+    id: `d-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    dayNumber: num,
+    name: `Day ${num} — Full Body Routine`,
+    focus: 'Compound movements and target muscle groups',
+    exercises: [
+      {
+        id: `ex-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        name: 'Barbell Back Squat',
+        videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8',
+        sets: 3,
+        reps: '10',
+        targetWeightKg: 50,
+        targetWeights: [50, 50, 50],
+        isDifferentWeights: false,
+        rpe: 8,
+        restSeconds: 90,
+        tempo: '3-0-1-0',
+        notes: 'Maintain neutral spine, push knees outward',
+        alternative: 'Goblet Squat'
+      }
+    ]
+  });
+
   const addDay = () => {
     const nextNum = days.length + 1;
     setDays([
@@ -117,6 +141,8 @@ export function WorkoutManager({ onSelectClient }) {
             sets: 4,
             reps: '8',
             targetWeightKg: 50,
+            targetWeights: [50, 50, 50, 50],
+            isDifferentWeights: false,
             rpe: 8,
             restSeconds: 90,
             tempo: '2-1-1-0',
@@ -126,6 +152,22 @@ export function WorkoutManager({ onSelectClient }) {
         ]
       }
     ]);
+  };
+
+  const removeDay = (dIdx) => {
+    if (days.length <= 1) {
+      setDays([createFreshDay(1)]);
+      showToast('Cleared Day 1 to a fresh blank routine');
+      return;
+    }
+    const updated = days
+      .filter((_, idx) => idx !== dIdx)
+      .map((d, idx) => ({
+        ...d,
+        dayNumber: idx + 1
+      }));
+    setDays(updated);
+    showToast(`Deleted day ${dIdx + 1}`);
   };
 
   const addExercise = (dayIdx) => {
@@ -243,6 +285,19 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
     );
   };
 
+  const handleOpenCreateModal = () => {
+    setEditingProgramId(null);
+    setProgramName('');
+    setProgramNotes('');
+    setProgramGoal('Strength & Muscle Gain');
+    setDurationWeeks(8);
+    setDaysPerWeek(4);
+    setBuilderMode('visual');
+    setNotepadText('');
+    setDays([createFreshDay(1)]);
+    setShowCreateModal(true);
+  };
+
   const handleOpenEditProgram = (prog) => {
     setEditingProgramId(prog.id);
     setSelectedClientId(prog.clientId || (clients[0]?.id || ''));
@@ -349,6 +404,7 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
       setEditingProgramId(null);
       setProgramName('');
       setProgramNotes('');
+      setDays([createFreshDay(1)]);
     } catch (err) {
       showToast('Failed to save program', 'error');
     }
@@ -400,12 +456,7 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
           )}
 
           <button
-            onClick={() => {
-              setEditingProgramId(null);
-              setProgramName('');
-              setProgramNotes('');
-              setShowCreateModal(true);
-            }}
+            onClick={handleOpenCreateModal}
             className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition transform active:scale-95"
           >
             <Plus className="w-4 h-4" />
@@ -570,8 +621,8 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
 
       {/* CREATE / EDIT PROGRAM MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-3xl w-full shadow-2xl my-8 space-y-6">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-start">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-3xl w-full shadow-2xl my-4 sm:my-8 space-y-6">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-white">
@@ -583,6 +634,7 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
                 onClick={() => {
                   setShowCreateModal(false);
                   setEditingProgramId(null);
+                  setDays([createFreshDay(1)]);
                 }}
                 className="text-slate-400 hover:text-white text-xs font-bold"
               >
@@ -829,6 +881,24 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
                   <div className="space-y-4">
                     {days.map((d, dIdx) => (
                       <div key={d.id} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-900">
+                          <div className="flex items-center space-x-2">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
+                              Day {dIdx + 1}
+                            </span>
+                            <span className="text-[11px] text-slate-400">({d.exercises?.length || 0} exercises)</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeDay(dIdx)}
+                            className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 px-2.5 py-1 rounded-lg border border-red-900/40 flex items-center space-x-1 transition"
+                            title="Delete this entire day"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Day</span>
+                          </button>
+                        </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <input
                             type="text"

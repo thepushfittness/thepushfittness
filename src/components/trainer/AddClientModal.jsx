@@ -1,7 +1,25 @@
 import React, { useState } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
-import { X, User, Dumbbell, Apple, DollarSign, Plus, Trash2 } from 'lucide-react';
+import { X, User, Dumbbell, Apple, DollarSign, Plus, Trash2, Camera, Upload } from 'lucide-react';
+
+export const MALE_AVATAR_PRESETS = [
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&q=80',
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=256&q=80',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus&clothing=graphicShirt',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=David&facialHair=beardLight'
+];
+
+export const FEMALE_AVATAR_PRESETS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&clothing=collarAndSweater',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Elena&top=longHair'
+];
 
 export function AddClientModal({ isOpen, onClose, onClientAdded }) {
   const { showToast } = useNotifications();
@@ -13,8 +31,10 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
     email: '',
     password: 'client123',
     phone: '',
+    avatar: MALE_AVATAR_PRESETS[0],
+    allowClientPhotoUpload: true,
     dateOfBirth: '1995-05-15',
-    gender: 'Female',
+    gender: 'Male',
     occupation: '',
     emergencyContact: '',
     startDate: new Date().toISOString().split('T')[0],
@@ -142,14 +162,99 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* STEP 1: PERSONAL INFORMATION */}
           {activeStep === 1 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Client Avatar Selector */}
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src={formData.avatar}
+                      alt="Avatar Preview"
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500 shadow-md bg-slate-900 shrink-0"
+                      onError={(e) => {
+                        e.target.src = formData.gender === 'Female' ? FEMALE_AVATAR_PRESETS[0] : MALE_AVATAR_PRESETS[0];
+                      }}
+                    />
+                    <div>
+                      <label className="text-slate-200 font-bold block text-xs">Client Avatar & Profile Photo</label>
+                      <p className="text-[11px] text-slate-400">Choose an athletic avatar preset, upload a photo, or paste a URL</p>
+                    </div>
+                  </div>
+
+                  <label className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs cursor-pointer flex items-center space-x-1.5 transition self-start sm:self-auto">
+                    <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Upload Photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setFormData(prev => ({ ...prev, avatar: ev.target.result }));
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* Quick Preset Avatars */}
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                    <span>Choose from {formData.gender === 'Female' ? 'Female' : 'Male'} Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newGender = formData.gender === 'Female' ? 'Male' : 'Female';
+                        const newPresets = newGender === 'Female' ? FEMALE_AVATAR_PRESETS : MALE_AVATAR_PRESETS;
+                        setFormData(prev => ({ ...prev, gender: newGender, avatar: newPresets[0] }));
+                      }}
+                      className="text-emerald-400 hover:underline font-semibold"
+                    >
+                      Switch to {formData.gender === 'Female' ? 'Male' : 'Female'} Presets
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.gender === 'Female' ? FEMALE_AVATAR_PRESETS : MALE_AVATAR_PRESETS).map((presetUrl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, avatar: presetUrl }))}
+                        className={`relative rounded-xl overflow-hidden border-2 transition ${
+                          formData.avatar === presetUrl ? 'border-emerald-500 scale-105 shadow-md shadow-emerald-500/20' : 'border-slate-800 hover:border-slate-600 opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={presetUrl} alt="Preset" className="w-10 h-10 object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom URL Input */}
+                <div className="flex items-center space-x-2 pt-1">
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase shrink-0">Or Image URL:</span>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={formData.avatar.startsWith('data:') ? '(Uploaded photo from device)' : formData.avatar}
+                    onChange={(e) => setFormData(prev => ({ ...prev, avatar: e.target.value }))}
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 text-xs focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-slate-400 font-semibold block mb-1">Full Name *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Jessica Miller"
+                    placeholder="e.g. David Vance"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
@@ -202,11 +307,20 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                   <label className="text-slate-400 font-semibold block mb-1">Gender</label>
                   <select
                     value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    onChange={(e) => {
+                      const newGender = e.target.value;
+                      const isFemale = newGender === 'Female';
+                      const defaultAvatar = isFemale ? FEMALE_AVATAR_PRESETS[0] : MALE_AVATAR_PRESETS[0];
+                      setFormData(prev => ({
+                        ...prev,
+                        gender: newGender,
+                        avatar: prev.avatar.startsWith('data:') ? prev.avatar : defaultAvatar
+                      }));
+                    }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
                   >
-                    <option value="Female">Female</option>
                     <option value="Male">Male</option>
+                    <option value="Female">Female</option>
                     <option value="Non-binary">Non-binary</option>
                     <option value="Prefer not to say">Prefer not to say</option>
                   </select>
@@ -323,7 +437,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
           {/* STEP 3: NUTRITION TARGETS */}
           {activeStep === 3 && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div>
                   <label className="text-slate-400 font-semibold block mb-1">Daily Calories</label>
                   <input
@@ -348,7 +462,16 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                     type="number"
                     value={formData.carbsTargetG}
                     onChange={(e) => setFormData({ ...formData, carbsTargetG: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-cyan-400"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-cyan-400 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Fats (g)</label>
+                  <input
+                    type="number"
+                    value={formData.fatsTargetG}
+                    onChange={(e) => setFormData({ ...formData, fatsTargetG: Number(e.target.value) })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-amber-400 font-bold"
                   />
                 </div>
                 <div>
@@ -357,7 +480,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                     type="number"
                     value={formData.waterTargetMl}
                     onChange={(e) => setFormData({ ...formData, waterTargetMl: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-blue-400"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-blue-400 font-bold"
                   />
                 </div>
               </div>

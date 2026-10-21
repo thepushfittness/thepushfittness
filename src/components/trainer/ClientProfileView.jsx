@@ -559,7 +559,7 @@ export function ClientProfileView({
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
                   <span className="text-slate-500 block">Daily Target</span>
                   <span className="text-base font-bold text-white">{client.dailyCalorieTarget} kcal</span>
@@ -571,6 +571,10 @@ export function ClientProfileView({
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
                   <span className="text-slate-500 block">Carbs Target</span>
                   <span className="text-base font-bold text-cyan-400">{client.carbsTargetG} g</span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-500 block">Fats Target</span>
+                  <span className="text-base font-bold text-amber-400">{client.fatsTargetG ?? 60} g</span>
                 </div>
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
                   <span className="text-slate-500 block">Water Target</span>

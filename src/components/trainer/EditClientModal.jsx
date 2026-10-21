@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { MALE_AVATAR_PRESETS, FEMALE_AVATAR_PRESETS } from './AddClientModal';
 import { 
   X, 
   User, 
@@ -11,7 +12,9 @@ import {
   Trash2, 
   Save,
   Eye,
-  EyeOff
+  EyeOff,
+  Camera,
+  Upload
 } from 'lucide-react';
 
 export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onClientUpdated }) {
@@ -25,8 +28,10 @@ export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onCl
     email: '',
     password: '',
     phone: '',
+    avatar: '',
+    allowClientPhotoUpload: true,
     dateOfBirth: '',
-    gender: 'Female',
+    gender: 'Male',
     occupation: '',
     emergencyContact: '',
     startDate: '',
@@ -82,8 +87,10 @@ export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onCl
         email: client.email || '',
         password: client.password || '',
         phone: client.phone || '',
+        avatar: client.avatar || MALE_AVATAR_PRESETS[0],
+        allowClientPhotoUpload: client.allowClientPhotoUpload ?? true,
         dateOfBirth: client.dateOfBirth || '',
-        gender: client.gender || 'Not specified',
+        gender: client.gender || 'Male',
         occupation: client.occupation || '',
         emergencyContact: client.emergencyContact || '',
         startDate: client.startDate || new Date().toISOString().split('T')[0],
@@ -171,13 +178,13 @@ export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-2xl w-full shadow-2xl my-8 space-y-5">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-start">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-2xl w-full shadow-2xl my-4 sm:my-8 space-y-5">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
             <h2 className="text-lg font-bold text-white">Edit Client Profile — {client.name}</h2>
-            <p className="text-xs text-slate-400">Modify personal info, health metrics, nutrition targets, or billing plan</p>
+            <p className="text-xs text-slate-400">Modify personal info, photo/avatar, nutrition targets, or billing plan</p>
           </div>
           <button
             onClick={onClose}
@@ -216,7 +223,92 @@ export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onCl
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* TAB 1: PERSONAL & LOGIN */}
           {activeStep === 1 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Client Avatar Selector */}
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src={formData.avatar || MALE_AVATAR_PRESETS[0]}
+                      alt="Avatar Preview"
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500 shadow-md bg-slate-900 shrink-0"
+                      onError={(e) => {
+                        e.target.src = formData.gender === 'Female' ? FEMALE_AVATAR_PRESETS[0] : MALE_AVATAR_PRESETS[0];
+                      }}
+                    />
+                    <div>
+                      <label className="text-slate-200 font-bold block text-xs">Client Avatar & Profile Photo</label>
+                      <p className="text-[11px] text-slate-400">Choose a male/female athletic preset, upload a photo, or paste a URL</p>
+                    </div>
+                  </div>
+
+                  <label className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs cursor-pointer flex items-center space-x-1.5 transition self-start sm:self-auto">
+                    <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Upload Photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setFormData(prev => ({ ...prev, avatar: ev.target.result }));
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* Quick Preset Avatars */}
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                    <span>Choose from {formData.gender === 'Female' ? 'Female' : 'Male'} Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newGender = formData.gender === 'Female' ? 'Male' : 'Female';
+                        const newPresets = newGender === 'Female' ? FEMALE_AVATAR_PRESETS : MALE_AVATAR_PRESETS;
+                        setFormData(prev => ({ ...prev, gender: newGender, avatar: newPresets[0] }));
+                      }}
+                      className="text-emerald-400 hover:underline font-semibold"
+                    >
+                      Switch to {formData.gender === 'Female' ? 'Male' : 'Female'} Presets
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.gender === 'Female' ? FEMALE_AVATAR_PRESETS : MALE_AVATAR_PRESETS).map((presetUrl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, avatar: presetUrl }))}
+                        className={`relative rounded-xl overflow-hidden border-2 transition ${
+                          formData.avatar === presetUrl ? 'border-emerald-500 scale-105 shadow-md shadow-emerald-500/20' : 'border-slate-800 hover:border-slate-600 opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={presetUrl} alt="Preset" className="w-10 h-10 object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom URL Input */}
+                <div className="flex items-center space-x-2 pt-1">
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase shrink-0">Or Image URL:</span>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={formData.avatar?.startsWith('data:') ? '(Uploaded photo from device)' : formData.avatar}
+                    onChange={(e) => setFormData(prev => ({ ...prev, avatar: e.target.value }))}
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 text-xs focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-slate-400 font-semibold block mb-1">Full Name *</label>
@@ -313,11 +405,20 @@ export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onCl
                   <label className="text-slate-400 font-semibold block mb-1">Gender</label>
                   <select
                     value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    onChange={(e) => {
+                      const newGender = e.target.value;
+                      const isFemale = newGender === 'Female';
+                      const defaultAvatar = isFemale ? FEMALE_AVATAR_PRESETS[0] : MALE_AVATAR_PRESETS[0];
+                      setFormData(prev => ({
+                        ...prev,
+                        gender: newGender,
+                        avatar: prev.avatar?.startsWith('data:') ? prev.avatar : defaultAvatar
+                      }));
+                    }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 outline-none"
                   >
-                    <option value="Female">Female</option>
                     <option value="Male">Male</option>
+                    <option value="Female">Female</option>
                     <option value="Non-binary">Non-binary</option>
                     <option value="Prefer not to say">Prefer not to say</option>
                   </select>

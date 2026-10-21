@@ -27,7 +27,12 @@ import {
   Moon,
   Smile,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Camera,
+  Upload,
+  Trash2,
+  Image,
+  X
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -38,6 +43,22 @@ import {
   ResponsiveContainer, 
   CartesianGrid 
 } from 'recharts';
+
+const MALE_AVATAR_PRESETS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=300&q=80'
+];
+
+const FEMALE_AVATAR_PRESETS = [
+  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
+];
 
 export function ClientApp() {
   const { user, clientProfile, refreshMe } = useAuth();
@@ -100,6 +121,22 @@ export function ClientApp() {
   // Photo comparison
   const [beforePhotoId, setBeforePhotoId] = useState(null);
   const [afterPhotoId, setAfterPhotoId] = useState(null);
+
+  // Client Avatar changer modal state
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [tempAvatar, setTempAvatar] = useState('');
+  const [avatarPresetGender, setAvatarPresetGender] = useState('Male');
+  const [savingAvatar, setSavingAvatar] = useState(false);
+
+  // Client Progress Photo upload modal state
+  const [showUploadPhotoModal, setShowUploadPhotoModal] = useState(false);
+  const [newPhotoDate, setNewPhotoDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newPhotoCategory, setNewPhotoCategory] = useState('front');
+  const [newPhotoWeight, setNewPhotoWeight] = useState(70);
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [newPhotoNotes, setNewPhotoNotes] = useState('');
+  const [newPhotoConsent, setNewPhotoConsent] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Load client data
   const loadClientData = async () => {
@@ -352,6 +389,123 @@ export function ClientApp() {
     }
   };
 
+  const handleOpenAvatarModal = () => {
+    setTempAvatar(client?.avatar || MALE_AVATAR_PRESETS[0]);
+    setAvatarPresetGender(client?.gender === 'Female' ? 'Female' : 'Male');
+    setShowAvatarModal(true);
+  };
+
+  const handleAvatarFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('Image too large. Please select an image under 8MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setTempAvatar(reader.result);
+      showToast('Photo uploaded! Click "Save Photo" to apply.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!tempAvatar) return;
+    try {
+      setSavingAvatar(true);
+      await api.updateProfile({ avatar: tempAvatar });
+      if (client?.id) {
+        await api.updateClient(client.id, { avatar: tempAvatar });
+      }
+      setClient(prev => ({ ...prev, avatar: tempAvatar }));
+      if (typeof refreshMe === 'function') refreshMe();
+      showToast('Profile photo updated successfully!');
+      setShowAvatarModal(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to update avatar', 'error');
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
+
+  const handleOpenUploadPhotoModal = () => {
+    setNewPhotoDate(new Date().toISOString().split('T')[0]);
+    setNewPhotoCategory('front');
+    setNewPhotoWeight(client?.weightKg || 70);
+    setNewPhotoUrl('');
+    setNewPhotoNotes('');
+    setNewPhotoConsent(false);
+    setShowUploadPhotoModal(true);
+  };
+
+  const handleProgressPhotoFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Image too large. Please select a photo under 10MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setNewPhotoUrl(reader.result);
+      showToast('Photo loaded! Review details and save.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProgressPhoto = async (e) => {
+    e.preventDefault();
+    if (!newPhotoUrl.trim()) {
+      showToast('Please select or upload a photo first', 'error');
+      return;
+    }
+    try {
+      setUploadingPhoto(true);
+      const newPhoto = await api.addProgressPhoto({
+        clientId: client.id,
+        imageUrl: newPhotoUrl.trim(),
+        date: newPhotoDate,
+        category: newPhotoCategory,
+        weightKg: Number(newPhotoWeight) || client.weightKg,
+        notes: newPhotoNotes.trim(),
+        marketingConsent: newPhotoConsent
+      });
+
+      const updatedPhotos = await api.getProgressPhotos(client.id);
+      setProgressPhotos(updatedPhotos || []);
+      setAfterPhotoId(newPhoto.id);
+      if (!beforePhotoId && updatedPhotos && updatedPhotos.length > 0) {
+        setBeforePhotoId(updatedPhotos[0].id);
+      }
+
+      setShowUploadPhotoModal(false);
+      showToast('Progress photo added to your transformation timeline!');
+    } catch (err) {
+      showToast(err.message || 'Failed to save progress photo', 'error');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeleteProgressPhoto = async (photoId) => {
+    if (!window.confirm('Are you sure you want to delete this progress photo?')) return;
+    try {
+      await api.deleteProgressPhoto(photoId);
+      const updatedPhotos = await api.getProgressPhotos(client.id);
+      setProgressPhotos(updatedPhotos || []);
+      if (beforePhotoId === photoId) {
+        setBeforePhotoId(updatedPhotos?.[0]?.id || null);
+      }
+      if (afterPhotoId === photoId) {
+        setAfterPhotoId(updatedPhotos?.[updatedPhotos.length - 1]?.id || null);
+      }
+      showToast('Progress photo removed');
+    } catch (err) {
+      showToast('Failed to delete photo', 'error');
+    }
+  };
+
   if (loading || !client) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -374,16 +528,37 @@ export function ClientApp() {
       <div className="bg-gradient-to-tr from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl relative overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <img
-              src={client.avatar}
-              alt={client.name}
-              className="w-12 h-12 rounded-2xl border-2 border-emerald-500/50 object-cover shadow-md"
-            />
+            <div
+              className="relative group cursor-pointer shrink-0"
+              onClick={handleOpenAvatarModal}
+              title="Click to update your profile photo"
+            >
+              <img
+                src={client.avatar}
+                alt={client.name}
+                className="w-12 h-12 rounded-2xl border-2 border-emerald-500/50 object-cover shadow-md transition group-hover:opacity-80"
+              />
+              <div className="absolute inset-0 bg-slate-950/60 rounded-2xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                <Camera className="w-5 h-5 text-emerald-400" />
+              </div>
+              <span className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 text-emerald-400 p-0.5 rounded-full shadow">
+                <Camera className="w-2.5 h-2.5" />
+              </span>
+            </div>
             <div>
-              <h1 className="text-lg font-bold text-white flex items-center space-x-1.5">
-                <span>Welcome back, {client.name.split(' ')[0]}!</span>
-                <Sparkles className="w-4 h-4 text-emerald-400" />
-              </h1>
+              <div className="flex items-center space-x-2">
+                <h1 className="text-lg font-bold text-white flex items-center space-x-1.5">
+                  <span>Welcome back, {client.name.split(' ')[0]}!</span>
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                </h1>
+                <button
+                  type="button"
+                  onClick={handleOpenAvatarModal}
+                  className="text-[10px] text-emerald-400 hover:underline font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
+                >
+                  Edit Photo
+                </button>
+              </div>
               <p className="text-xs text-slate-400">
                 🎯 {client.currentGoal} • <strong className="text-emerald-400">{client.workoutAdherence}%</strong> compliance
               </p>
@@ -949,10 +1124,57 @@ export function ClientApp() {
 
           {/* Transformation Photos Comparison */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-white">Transformation Progress Photos</h3>
-              <span className="text-[11px] text-slate-400">Strictly Private</span>
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <h3 className="font-bold text-sm text-white flex items-center space-x-1.5">
+                  <Camera className="w-4 h-4 text-emerald-400" />
+                  <span>Transformation Progress Photos</span>
+                </h3>
+                <span className="text-[11px] text-slate-400">Strictly private between you and Coach Pushkar</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenUploadPhotoModal}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition flex items-center space-x-1.5 shadow-md shadow-emerald-500/20"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Upload Photo</span>
+              </button>
             </div>
+
+            {/* Photo Selection Controls (if more than 1 photo exists) */}
+            {progressPhotos.length > 1 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                <div>
+                  <label className="text-slate-400 text-[11px] font-semibold block mb-1">Select Start Photo</label>
+                  <select
+                    value={beforePhotoId || ''}
+                    onChange={(e) => setBeforePhotoId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:border-emerald-500"
+                  >
+                    {progressPhotos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.date} ({p.category || 'front'}) {p.weightKg ? `• ${p.weightKg}kg` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-400 text-[11px] font-semibold block mb-1">Select Current Photo</label>
+                  <select
+                    value={afterPhotoId || ''}
+                    onChange={(e) => setAfterPhotoId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:border-emerald-500"
+                  >
+                    {progressPhotos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.date} ({p.category || 'front'}) {p.weightKg ? `• ${p.weightKg}kg` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1 text-center">
@@ -961,7 +1183,10 @@ export function ClientApp() {
                   {beforePhoto ? (
                     <img src={beforePhoto.imageUrl} alt="Start" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="h-full flex items-center justify-center text-xs text-slate-600">No start photo</div>
+                    <div className="h-full flex flex-col items-center justify-center p-3 text-xs text-slate-500">
+                      <Camera className="w-6 h-6 text-slate-600 mb-1" />
+                      <span>No start photo yet</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -972,11 +1197,59 @@ export function ClientApp() {
                   {afterPhoto ? (
                     <img src={afterPhoto.imageUrl} alt="Current" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="h-full flex items-center justify-center text-xs text-slate-600">No current photo</div>
+                    <div className="h-full flex flex-col items-center justify-center p-3 text-xs text-slate-500">
+                      <Camera className="w-6 h-6 text-emerald-600 mb-1" />
+                      <span>No current photo yet</span>
+                    </div>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Gallery of all uploaded progress photos */}
+            {progressPhotos.length > 0 && (
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-300 block">
+                    Your Photo Timeline ({progressPhotos.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleOpenUploadPhotoModal}
+                    className="text-[11px] text-emerald-400 hover:underline font-semibold"
+                  >
+                    + Add Another
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {progressPhotos.map((p) => (
+                    <div key={p.id} className="relative group bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 flex flex-col">
+                      <div className="h-36 w-full overflow-hidden bg-slate-900 relative">
+                        <img src={p.imageUrl} alt={p.category} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                        <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-sm text-[10px] font-bold text-emerald-400 px-2 py-0.5 rounded-full uppercase">
+                          {p.category || 'front'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProgressPhoto(p.id)}
+                          className="absolute top-2 right-2 bg-red-950/90 hover:bg-red-800 text-red-200 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition shadow"
+                          title="Delete photo"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="p-2.5 text-[11px] space-y-0.5">
+                        <div className="flex justify-between items-center text-slate-300 font-semibold">
+                          <span>{p.date}</span>
+                          {p.weightKg && <span className="text-emerald-400 font-bold">{p.weightKg} kg</span>}
+                        </div>
+                        {p.notes && <p className="text-slate-400 italic line-clamp-2">"{p.notes}"</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1079,8 +1352,8 @@ export function ClientApp() {
 
       {/* WEEKLY CHECK-IN SUBMISSION MODAL */}
       {showCheckinModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full shadow-2xl my-8 space-y-4 text-xs">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-start">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full shadow-2xl my-4 sm:my-8 space-y-4 text-xs">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-white">Weekly Client Accountability Check-in</h3>
@@ -1190,6 +1463,262 @@ export function ClientApp() {
                   className="px-5 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-450 transition"
                 >
                   Submit Check-in
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CLIENT AVATAR SELECTION MODAL */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-start">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full shadow-2xl my-4 sm:my-8 space-y-5 text-xs">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Camera className="w-4 h-4 text-emerald-400" />
+                  <span>Update Your Profile Photo</span>
+                </h3>
+                <p className="text-xs text-slate-400">Choose an athletic avatar preset or upload your photo</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAvatarModal(false)}
+                className="text-slate-400 hover:text-white text-xs font-bold"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Current preview */}
+            <div className="flex items-center space-x-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+              <img
+                src={tempAvatar || client.avatar}
+                alt="Avatar Preview"
+                className="w-16 h-16 rounded-2xl border-2 border-emerald-500 object-cover shadow-lg"
+              />
+              <div className="space-y-1">
+                <span className="font-bold text-white text-sm block">Selected Photo</span>
+                <span className="text-slate-400 text-xs block">Visible to Coach Pushkar on your training profile</span>
+              </div>
+            </div>
+
+            {/* Presets */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-slate-300 font-semibold">Choose an Athletic Avatar Preset</label>
+                <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setAvatarPresetGender('Male')}
+                    className={`px-2 py-0.5 rounded font-bold transition ${
+                      avatarPresetGender === 'Male' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'
+                    }`}
+                  >
+                    Male
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarPresetGender('Female')}
+                    className={`px-2 py-0.5 rounded font-bold transition ${
+                      avatarPresetGender === 'Female' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'
+                    }`}
+                  >
+                    Female
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {(avatarPresetGender === 'Female' ? FEMALE_AVATAR_PRESETS : MALE_AVATAR_PRESETS).map((presetUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setTempAvatar(presetUrl)}
+                    className={`relative rounded-xl overflow-hidden border-2 transition shrink-0 ${
+                      tempAvatar === presetUrl ? 'border-emerald-500 scale-105 shadow-md shadow-emerald-500/20' : 'border-slate-800 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={presetUrl} alt="Preset" className="w-12 h-12 object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom file upload */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <label className="text-slate-300 font-semibold block">Or Upload from Phone / Computer</label>
+              <label className="flex items-center justify-center space-x-2 px-4 py-3 bg-slate-950 hover:bg-slate-850 border border-dashed border-slate-700 hover:border-emerald-500 rounded-xl cursor-pointer text-slate-300 text-xs font-semibold transition">
+                <Upload className="w-4 h-4 text-emerald-400" />
+                <span>Select image file (JPG, PNG, WebP)</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Or custom URL */}
+            <div className="space-y-1">
+              <label className="text-slate-400 text-[11px] block">Or paste image URL:</label>
+              <input
+                type="url"
+                placeholder="https://images.unsplash.com/..."
+                value={tempAvatar.startsWith('data:') ? '' : tempAvatar}
+                onChange={(e) => setTempAvatar(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowAvatarModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAvatar}
+                disabled={savingAvatar}
+                className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition disabled:opacity-50"
+              >
+                {savingAvatar ? 'Saving...' : 'Save Profile Photo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CLIENT PROGRESS PHOTO UPLOAD MODAL */}
+      {showUploadPhotoModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-start">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full shadow-2xl my-4 sm:my-8 space-y-4 text-xs">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Camera className="w-4 h-4 text-emerald-400" />
+                  <span>Upload Transformation Progress Photo</span>
+                </h3>
+                <p className="text-xs text-slate-400">Strictly confidential between you and Coach Pushkar</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUploadPhotoModal(false)}
+                className="text-slate-400 hover:text-white text-xs font-bold"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProgressPhoto} className="space-y-4">
+              {/* Photo preview or file upload */}
+              {newPhotoUrl ? (
+                <div className="space-y-2">
+                  <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-emerald-500/50 h-56 flex items-center justify-center">
+                    <img src={newPhotoUrl} alt="Preview" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setNewPhotoUrl('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/80 hover:bg-red-950 text-white hover:text-red-400 border border-slate-700 text-xs font-bold transition"
+                    >
+                      Change Photo
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="flex flex-col items-center justify-center h-44 bg-slate-950 hover:bg-slate-850 border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-2xl cursor-pointer text-slate-400 text-xs font-semibold transition p-4 text-center">
+                    <Upload className="w-8 h-8 text-emerald-400 mb-2" />
+                    <span className="font-bold text-white text-sm">Tap to select photo from device</span>
+                    <span className="text-[11px] text-slate-500 mt-1">Camera snap, gallery or file upload (under 10MB)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProgressPhotoFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <div className="space-y-1">
+                    <span className="text-[11px] text-slate-500 block">Or paste image URL:</span>
+                    <input
+                      type="url"
+                      placeholder="https://..."
+                      value={newPhotoUrl}
+                      onChange={(e) => setNewPhotoUrl(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Photo details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Date Taken</label>
+                  <input
+                    type="date"
+                    value={newPhotoDate}
+                    onChange={(e) => setNewPhotoDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Angle / Pose</label>
+                  <select
+                    value={newPhotoCategory}
+                    onChange={(e) => setNewPhotoCategory(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 outline-none"
+                  >
+                    <option value="front">Front View</option>
+                    <option value="side">Side Profile</option>
+                    <option value="back">Back View</option>
+                    <option value="other">Other / Flex</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Body Weight (kg)</label>
+                  <input
+                    type="number"
+                    step={0.1}
+                    value={newPhotoWeight}
+                    onChange={(e) => setNewPhotoWeight(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 outline-none font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Notes / Reflection (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Week 4 check-in, feeling leaner, morning fasted photo..."
+                  value={newPhotoNotes}
+                  onChange={(e) => setNewPhotoNotes(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadPhotoModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingPhoto || !newPhotoUrl}
+                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition disabled:opacity-50"
+                >
+                  {uploadingPhoto ? 'Saving Photo...' : 'Add to My Progress'}
                 </button>
               </div>
             </form>
