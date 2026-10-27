@@ -156,6 +156,28 @@ export function ClientProfileView({
     }
   };
 
+  const handleQuickCompleteSession = async (sessionId) => {
+    try {
+      const updated = await api.updateSession(sessionId, { status: 'completed' });
+      setSessions(prev => prev.map(s => s.id === sessionId ? updated : s));
+      showToast('Session marked as completed! 1 credit deducted.');
+      if (client) api.getClient(client.id).then(setClient);
+    } catch (err) {
+      showToast('Failed to mark session complete', 'error');
+    }
+  };
+
+  const handleQuickReopenSession = async (sessionId) => {
+    try {
+      const updated = await api.updateSession(sessionId, { status: 'scheduled' });
+      setSessions(prev => prev.map(s => s.id === sessionId ? updated : s));
+      showToast('Session reopened as scheduled.');
+      if (client) api.getClient(client.id).then(setClient);
+    } catch (err) {
+      showToast('Failed to reopen session', 'error');
+    }
+  };
+
   const loadClientData = async () => {
     try {
       setLoading(true);
@@ -1111,6 +1133,25 @@ export function ClientProfileView({
                         <td className="py-3 px-4 text-slate-400 text-[11px] max-w-xs truncate">{sess.notes || '—'}</td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
+                            {sess.status === 'scheduled' ? (
+                              <button
+                                onClick={() => handleQuickCompleteSession(sess.id)}
+                                className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 rounded-lg text-xs font-bold transition flex items-center space-x-1 border border-emerald-500/30 shadow-sm"
+                                title="1-Click Mark Completed"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Complete ✓</span>
+                              </button>
+                            ) : sess.status === 'completed' ? (
+                              <button
+                                onClick={() => handleQuickReopenSession(sess.id)}
+                                className="text-[11px] text-slate-400 hover:text-white underline mr-1"
+                                title="Revert to Scheduled"
+                              >
+                                Reopen
+                              </button>
+                            ) : null}
+
                             <button
                               onClick={() => setEditingSession(sess)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition"

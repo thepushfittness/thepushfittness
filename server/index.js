@@ -410,6 +410,11 @@ app.post('/api/sessions', authenticateToken, requireTrainer, (req, res) => {
   res.status(201).json(newSession);
 });
 
+app.post('/api/sessions/bulk', authenticateToken, requireTrainer, (req, res) => {
+  const createdSessions = db.createSessionsBulk(req.body);
+  res.status(201).json(createdSessions);
+});
+
 app.put('/api/sessions/:id', authenticateToken, (req, res) => {
   // Trainer can update everything; client can request reschedule / cancel
   const updated = db.updateSession(req.params.id, req.body);

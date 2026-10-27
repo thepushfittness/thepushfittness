@@ -17,7 +17,9 @@ import {
   Pencil,
   Trash2,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 const COMMON_TIMES = [
@@ -41,11 +43,14 @@ export function SessionCalendar({ onSelectClient }) {
 
   // Booking modal
   const [showBookModal, setShowBookModal] = useState(false);
+  const [bookMode, setBookMode] = useState('single'); // 'single' or 'recurring'
+  const [bookRecurringOption, setBookRecurringOption] = useState('MWF'); // 'MWF' or 'TTS'
+  const [bookRecurringCount, setBookRecurringCount] = useState(12);
   const [bookClientId, setBookClientId] = useState('');
   const [bookDate, setBookDate] = useState(new Date().toISOString().split('T')[0]);
   const [bookTime, setBookTime] = useState('09:00 AM');
   const [bookDuration, setBookDuration] = useState(60);
-  const [bookLocation, setBookLocation] = useState('Apex Fitness Studio');
+  const [bookLocation, setBookLocation] = useState('The Push Fitness Studio');
   const [bookType, setBookType] = useState('1-on-1 In-Person');
   const [bookNotes, setBookNotes] = useState('');
 
@@ -76,21 +81,56 @@ export function SessionCalendar({ onSelectClient }) {
   const handleCreateSession = async (e) => {
     e.preventDefault();
     if (!bookClientId) return;
+    const selectedClient = clients.find(c => c.id === bookClientId);
 
     try {
-      const created = await api.createSession({
-        clientId: bookClientId,
-        date: bookDate,
-        time: bookTime,
-        durationMinutes: Number(bookDuration),
-        location: bookLocation,
-        sessionType: bookType,
-        notes: bookNotes,
-        status: 'scheduled'
-      });
-      setSessions(prev => [created, ...prev]);
-      setShowBookModal(false);
-      showToast(`Booked session on ${bookDate} at ${bookTime}!`);
+      if (bookMode === 'recurring') {
+        const targetDays = bookRecurringOption === 'TTS' ? [2, 4, 6] : [1, 3, 5];
+        const [year, month, day] = bookDate.split('-').map(Number);
+        const cur = new Date(year, month - 1, day);
+        const toInsert = [];
+        let loop = 0;
+        const count = Number(bookRecurringCount) || 12;
+        while (toInsert.length < count && loop < 400) {
+          if (targetDays.includes(cur.getDay())) {
+            const y = cur.getFullYear();
+            const m = String(cur.getMonth() + 1).padStart(2, '0');
+            const d = String(cur.getDate()).padStart(2, '0');
+            toInsert.push({
+              trainerId: 'user-trainer-1',
+              clientId: bookClientId,
+              clientName: selectedClient?.name || 'Client',
+              date: `${y}-${m}-${d}`,
+              time: bookTime,
+              durationMinutes: Number(bookDuration),
+              location: bookLocation,
+              sessionType: bookType,
+              status: 'scheduled',
+              notes: bookNotes || `Auto-scheduled ${bookRecurringOption === 'TTS' ? 'Tue/Thu/Sat' : 'Mon/Wed/Fri'} session #${toInsert.length + 1}`
+            });
+          }
+          cur.setDate(cur.getDate() + 1);
+          loop++;
+        }
+        const bulkRes = await api.createSessionsBulk(toInsert);
+        setSessions(prev => [...(bulkRes.sessions || toInsert), ...prev]);
+        setShowBookModal(false);
+        showToast(`Auto-scheduled ${toInsert.length} sessions on ${bookRecurringOption === 'TTS' ? 'Tue/Thu/Sat' : 'Mon/Wed/Fri'}!`);
+      } else {
+        const created = await api.createSession({
+          clientId: bookClientId,
+          date: bookDate,
+          time: bookTime,
+          durationMinutes: Number(bookDuration),
+          location: bookLocation,
+          sessionType: bookType,
+          notes: bookNotes,
+          status: 'scheduled'
+        });
+        setSessions(prev => [created, ...prev]);
+        setShowBookModal(false);
+        showToast(`Booked session on ${bookDate} at ${bookTime}!`);
+      }
       // Reload clients to refresh remaining sessions counts
       api.getClients().then(setClients);
     } catch (err) {
@@ -134,6 +174,7 @@ export function SessionCalendar({ onSelectClient }) {
 
   // Filtered Sessions
   const todayStr = new Date().toISOString().split('T')[0];
+  const scheduledToday = sessions.filter(s => s.date === todayStr && s.status === 'scheduled');
   const filteredSessions = sessions.filter(sess => {
     // Search filter
     if (searchQuery.trim()) {
@@ -252,6 +293,60 @@ export function SessionCalendar({ onSelectClient }) {
         </div>
       </div>
 
+      {/* ⚡ Today's Coaching Schedule & Quick Complete Bar */}
+      {scheduledToday.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <h2 className="text-sm font-bold text-white flex items-center space-x-1.5">
+                <span>⚡ Today's Coaching Schedule & Quick Complete</span>
+                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-extrabold border border-emerald-500/30">
+                  {scheduledToday.length} Session{scheduledToday.length > 1 ? 's' : ''} Today
+                </span>
+              </h2>
+            </div>
+            <span className="text-slate-400 text-xs hidden sm:inline">1-Click mark completed & deduct client credit</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {scheduledToday.map(sess => (
+              <div 
+                key={sess.id}
+                className="bg-slate-950/80 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-between gap-3 shadow-md hover:border-emerald-500/40 transition"
+              >
+                <div className="min-w-0">
+                  <div 
+                    onClick={() => onSelectClient && onSelectClient(sess.clientId, 'sessions')}
+                    className="font-bold text-white text-xs truncate hover:text-cyan-400 cursor-pointer"
+                  >
+                    {sess.clientName}
+                  </div>
+                  <div className="flex items-center text-[11px] text-cyan-400 font-semibold space-x-1 mt-0.5">
+                    <Clock className="w-3 h-3 shrink-0" />
+                    <span>{sess.time}</span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-slate-400 truncate text-[10px]">{sess.sessionType}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleUpdateStatus(sess.id, 'completed')}
+                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-xs shadow-md shadow-emerald-500/20 transition flex items-center space-x-1 shrink-0 active:scale-95"
+                  title="Mark Completed"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Complete ✓</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Sessions Grid */}
       {loading ? (
         <div className="p-12 text-center text-xs text-slate-500">Loading coaching sessions...</div>
@@ -353,13 +448,15 @@ export function SessionCalendar({ onSelectClient }) {
                     <>
                       <button
                         onClick={() => handleUpdateStatus(sess.id, 'completed')}
-                        className="flex-1 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold rounded-lg border border-emerald-500/30 text-center transition"
+                        className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-center transition flex items-center justify-center space-x-1 shadow-md shadow-emerald-500/20 active:scale-95"
+                        title="1-Click Mark Completed & Deduct Credit"
                       >
-                        ✓ Completed
+                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+                        <span>✓ Mark Done</span>
                       </button>
                       <button
                         onClick={() => handleUpdateStatus(sess.id, 'no-show')}
-                        className="py-1.5 px-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg border border-red-500/20 transition text-[11px]"
+                        className="py-1.5 px-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg border border-red-500/20 transition text-[11px]"
                       >
                         No-Show
                       </button>
@@ -373,19 +470,25 @@ export function SessionCalendar({ onSelectClient }) {
                     </>
                   ) : (
                     <div className="flex justify-between items-center w-full">
-                      <button
-                        onClick={() => setEditingSession(sess)}
-                        className="text-[11px] text-cyan-400 hover:underline flex items-center space-x-1"
-                      >
-                        <Pencil className="w-3 h-3" />
-                        <span>Edit Details</span>
-                      </button>
-                      <button
-                        onClick={() => handleUpdateStatus(sess.id, 'scheduled')}
-                        className="text-[11px] text-slate-400 hover:text-white underline"
-                      >
-                        Reopen
-                      </button>
+                      <span className="text-[11px] text-emerald-400 font-bold flex items-center space-x-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Completed</span>
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setEditingSession(sess)}
+                          className="text-[11px] text-cyan-400 hover:underline flex items-center space-x-1"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span>Edit Details</span>
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(sess.id, 'scheduled')}
+                          className="text-[11px] text-slate-400 hover:text-white underline"
+                        >
+                          Reopen
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -429,9 +532,88 @@ export function SessionCalendar({ onSelectClient }) {
                 </select>
               </div>
 
+              {/* Booking Mode Switcher */}
+              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setBookMode('single')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${
+                    bookMode === 'single'
+                      ? 'bg-slate-800 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Single Session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookMode('recurring')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1 ${
+                    bookMode === 'recurring'
+                      ? 'bg-emerald-500 text-slate-950 shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>3-Days/Week Batch Schedule</span>
+                </button>
+              </div>
+
+              {bookMode === 'recurring' && (
+                <div className="p-3 bg-slate-950 rounded-xl border border-emerald-500/30 space-y-3">
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1 text-xs">
+                      Select 3-Days Schedule:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBookRecurringOption('MWF')}
+                        className={`p-2.5 rounded-lg border text-left text-xs transition ${
+                          bookRecurringOption === 'MWF'
+                            ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold'
+                            : 'bg-slate-900 border-slate-800 text-slate-400'
+                        }`}
+                      >
+                        <div className="text-emerald-400 text-[10px] font-bold uppercase">Option 1</div>
+                        <div className="font-semibold text-white">Mon • Wed • Fri</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBookRecurringOption('TTS')}
+                        className={`p-2.5 rounded-lg border text-left text-xs transition ${
+                          bookRecurringOption === 'TTS'
+                            ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold'
+                            : 'bg-slate-900 border-slate-800 text-slate-400'
+                        }`}
+                      >
+                        <div className="text-emerald-400 text-[10px] font-bold uppercase">Option 2</div>
+                        <div className="font-semibold text-white">Tue • Thu • Sat</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1 text-xs">
+                      Number of Sessions to Auto-Add
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={bookRecurringCount}
+                      onChange={(e) => setBookRecurringCount(Number(e.target.value))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white font-bold"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-400 font-semibold block mb-1">Date</label>
+                  <label className="text-slate-400 font-semibold block mb-1">
+                    {bookMode === 'recurring' ? 'First Session Start Date' : 'Date'}
+                  </label>
                   <input
                     type="date"
                     value={bookDate}
@@ -528,7 +710,7 @@ export function SessionCalendar({ onSelectClient }) {
                   type="submit"
                   className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-450 transition"
                 >
-                  Confirm Booking
+                  {bookMode === 'recurring' ? `Auto-Schedule ${bookRecurringCount} Sessions` : 'Confirm Booking'}
                 </button>
               </div>
             </form>

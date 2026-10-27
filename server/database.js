@@ -213,6 +213,61 @@ class Database {
       });
     }
 
+    // Auto-generate recurring 3x/week sessions if requested
+    if (clientData.autoSchedule && clientData.autoSchedule.enabled) {
+      const {
+        startDate,
+        scheduleOption = 'MWF', // 'MWF' (Mon/Wed/Fri) or 'TTS' (Tue/Thu/Sat)
+        time = '10:00 AM',
+        sessionCount = Number(newClient.sessionsPurchased) || 12,
+        location = 'The Push Fitness Studio',
+        sessionType = 'Personal Training Session'
+      } = clientData.autoSchedule;
+
+      const targetDays = scheduleOption === 'TTS' ? [2, 4, 6] : [1, 3, 5];
+      const startStr = startDate || newClient.startDate || new Date().toISOString().split('T')[0];
+      const [year, month, day] = startStr.split('-').map(Number);
+      const current = new Date(year, month - 1, day);
+      const sessionsToCreate = [];
+      let loopCount = 0;
+
+      while (sessionsToCreate.length < sessionCount && loopCount < 400) {
+        const dayOfWeek = current.getDay();
+        if (targetDays.includes(dayOfWeek)) {
+          const y = current.getFullYear();
+          const m = String(current.getMonth() + 1).padStart(2, '0');
+          const d = String(current.getDate()).padStart(2, '0');
+          sessionsToCreate.push({
+            id: `sess-${Date.now()}-${sessionsToCreate.length}-${Math.random().toString(36).substr(2, 5)}`,
+            trainerId: 'user-trainer-1',
+            clientId: id,
+            clientName: newClient.name,
+            date: `${y}-${m}-${d}`,
+            time,
+            durationMinutes: 60,
+            location,
+            sessionType,
+            status: 'scheduled',
+            notes: `Auto-generated ${scheduleOption === 'TTS' ? 'Tue/Thu/Sat' : 'Mon/Wed/Fri'} session #${sessionsToCreate.length + 1}`,
+            createdAt: new Date().toISOString()
+          });
+        }
+        current.setDate(current.getDate() + 1);
+        loopCount++;
+      }
+
+      this.data.sessions.push(...sessionsToCreate);
+      newClient.firstSessionDate = sessionsToCreate[0]?.date || null;
+      newClient.scheduledSessionsCount = sessionsToCreate.length;
+
+      this.addTimelineEvent(
+        id,
+        'sessions_scheduled',
+        'Training Schedule Initialized',
+        `Auto-scheduled ${sessionsToCreate.length} sessions on ${scheduleOption === 'TTS' ? 'Tue/Thu/Sat' : 'Mon/Wed/Fri'} starting ${startStr}.`
+      );
+    }
+
     this.save();
     return newClient;
   }
@@ -474,7 +529,7 @@ class Database {
 
   createSession(sessionData) {
     const client = this.getClientById(sessionData.clientId);
-    const id = `sess-${Date.now()}`;
+    const id = sessionData.id || `sess-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const newSession = {
       id,
       trainerId: 'user-trainer-1',
@@ -502,6 +557,42 @@ class Database {
 
     this.save();
     return newSession;
+  }
+
+  createSessionsBulk(sessionsArray) {
+    if (!Array.isArray(sessionsArray) || sessionsArray.length === 0) return [];
+    const createdList = [];
+    const affectedClientIds = new Set();
+
+    for (let i = 0; i < sessionsArray.length; i++) {
+      const s = sessionsArray[i];
+      const client = this.getClientById(s.clientId);
+      const id = s.id || `sess-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 5)}`;
+      const newSession = {
+        id,
+        trainerId: 'user-trainer-1',
+        ...s,
+        clientName: client ? client.name : (s.clientName || 'Client'),
+        status: s.status || 'scheduled',
+        createdAt: new Date().toISOString()
+      };
+      this.data.sessions.push(newSession);
+      createdList.push(newSession);
+      if (s.clientId) affectedClientIds.add(s.clientId);
+    }
+
+    // Recalculate sessions for all affected clients
+    for (const cid of affectedClientIds) {
+      const client = this.getClientById(cid);
+      if (client) {
+        const clientSessions = this.data.sessions.filter(sess => sess.clientId === cid);
+        client.sessionsCompleted = clientSessions.filter(sess => sess.status === 'completed').length;
+        client.sessionsRemaining = Math.max(0, (client.sessionsPurchased || 0) - client.sessionsCompleted);
+      }
+    }
+
+    this.save();
+    return createdList;
   }
 
   updateSession(id, updates) {

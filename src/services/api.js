@@ -170,6 +170,7 @@ export const api = {
     return request(`/sessions${query ? `?${query}` : ''}`);
   },
   createSession: (sessionData) => request('/sessions', { method: 'POST', body: sessionData }),
+  createSessionsBulk: (sessionsArray) => request('/sessions/bulk', { method: 'POST', body: sessionsArray }),
   updateSession: (id, updates) => request(`/sessions/${id}`, { method: 'PUT', body: updates }),
   deleteSession: (id) => request(`/sessions/${id}`, { method: 'DELETE' }),
 

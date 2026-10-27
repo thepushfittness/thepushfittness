@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
-import { X, User, Dumbbell, Apple, DollarSign, Plus, Trash2, Camera, Upload } from 'lucide-react';
+import { X, User, Dumbbell, Apple, DollarSign, Plus, Trash2, Camera, Upload, Calendar, Clock, CheckCircle2, Sparkles, Check } from 'lucide-react';
 
 export const MALE_AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
@@ -76,10 +76,38 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
     customFields: {}
   });
 
+  // Auto-Schedule 3-Days/Week States
+  const [autoScheduleEnabled, setAutoScheduleEnabled] = useState(true);
+  const [scheduleStartDate, setScheduleStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [scheduleOption, setScheduleOption] = useState('MWF'); // 'MWF' = Option 1: Mon/Wed/Fri, 'TTS' = Option 2: Tue/Thu/Sat
+  const [sessionTime, setSessionTime] = useState('10:00 AM');
+  const [sessionLocation, setSessionLocation] = useState('The Push Fitness Studio');
+
   const [customKey, setCustomKey] = useState('');
   const [customVal, setCustomVal] = useState('');
 
   if (!isOpen) return null;
+
+  // Calculate live preview dates for auto-scheduling
+  const getSchedulePreview = () => {
+    if (!scheduleStartDate) return [];
+    const targetDays = scheduleOption === 'TTS' ? [2, 4, 6] : [1, 3, 5];
+    const [year, month, day] = scheduleStartDate.split('-').map(Number);
+    if (!year || !month || !day) return [];
+    const cur = new Date(year, month - 1, day);
+    const count = Number(formData.sessionsPurchased) || 12;
+    const dates = [];
+    let safety = 0;
+    while (dates.length < count && safety < 400) {
+      if (targetDays.includes(cur.getDay())) {
+        dates.push(new Date(cur));
+      }
+      cur.setDate(cur.getDate() + 1);
+      safety++;
+    }
+    return dates;
+  };
+  const previewDates = getSchedulePreview();
 
   const handleAddCustomField = () => {
     if (!customKey.trim() || !customVal.trim()) return;
@@ -110,8 +138,21 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
     }
 
     try {
-      const created = await api.createClient(formData);
-      showToast(`Client ${created.name} onboarded successfully!`);
+      const sessionCount = Number(formData.sessionsPurchased) || 12;
+      const payload = {
+        ...formData,
+        autoSchedule: {
+          enabled: autoScheduleEnabled,
+          startDate: scheduleStartDate,
+          scheduleOption: scheduleOption, // 'MWF' or 'TTS'
+          time: sessionTime,
+          sessionCount: sessionCount,
+          location: sessionLocation,
+          sessionType: 'Personal Training Session'
+        }
+      };
+      const created = await api.createClient(payload);
+      showToast(`Client ${created.name} onboarded successfully!${autoScheduleEnabled ? ` ${sessionCount} coaching sessions auto-scheduled on ${scheduleOption === 'TTS' ? 'Tue/Thu/Sat' : 'Mon/Wed/Fri'}.` : ''}`);
       onClientAdded(created);
       onClose();
     } catch (err) {
@@ -541,6 +582,156 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
+              </div>
+
+              {/* AUTO-SCHEDULE 3-DAYS/WEEK DIRECTLY FROM START DATE */}
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-emerald-400" />
+                    <span className="text-white font-bold text-sm">Auto-Schedule Coaching Sessions (3 Days/Week)</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={autoScheduleEnabled} 
+                      onChange={(e) => setAutoScheduleEnabled(e.target.checked)}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                  </label>
+                </div>
+                <p className="text-slate-400 text-xs">
+                  Automatically populates all {formData.sessionsPurchased || 12} package sessions on your calendar 3 days a week directly from the start date.
+                </p>
+
+                {autoScheduleEnabled && (
+                  <div className="bg-slate-950/80 border border-slate-800/90 rounded-2xl p-4 space-y-4">
+                    {/* Start Date Picker */}
+                    <div>
+                      <label className="text-slate-300 font-semibold block mb-1 text-xs flex items-center justify-between">
+                        <span>Training Start Date (First Session)</span>
+                        <span className="text-slate-500 text-[11px]">Sessions generated from this day</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={scheduleStartDate}
+                        onChange={(e) => setScheduleStartDate(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2 text-white text-xs"
+                        required
+                      />
+                    </div>
+
+                    {/* 2 Selectable Schedule Options */}
+                    <div>
+                      <label className="text-slate-300 font-semibold block mb-1.5 text-xs">
+                        Select 3-Days Weekly Schedule:
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {/* Option 1 */}
+                        <div
+                          onClick={() => setScheduleOption('MWF')}
+                          className={`p-3 rounded-xl border text-left cursor-pointer transition relative ${
+                            scheduleOption === 'MWF'
+                              ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-md shadow-emerald-500/10'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[11px] font-bold uppercase tracking-wider ${scheduleOption === 'MWF' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                              Option 1
+                            </span>
+                            {scheduleOption === 'MWF' && (
+                              <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-[10px]">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                          <div className="font-extrabold text-white text-xs mt-1">
+                            Monday • Wednesday • Friday
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Standard MWF schedule with weekends off
+                          </p>
+                        </div>
+
+                        {/* Option 2 */}
+                        <div
+                          onClick={() => setScheduleOption('TTS')}
+                          className={`p-3 rounded-xl border text-left cursor-pointer transition relative ${
+                            scheduleOption === 'TTS'
+                              ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-md shadow-emerald-500/10'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[11px] font-bold uppercase tracking-wider ${scheduleOption === 'TTS' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                              Option 2
+                            </span>
+                            {scheduleOption === 'TTS' && (
+                              <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-[10px]">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                          <div className="font-extrabold text-white text-xs mt-1">
+                            Tuesday • Thursday • Saturday
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            TTS split with Sunday & Monday off
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Time & Location */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-slate-300 font-semibold block mb-1 text-xs">Session Time</label>
+                        <select
+                          value={sessionTime}
+                          onChange={(e) => setSessionTime(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2 text-white text-xs"
+                        >
+                          {[
+                            '06:00 AM', '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM',
+                            '12:00 PM', '01:00 PM', '04:00 PM', '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM'
+                          ].map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-slate-300 font-semibold block mb-1 text-xs">Training Studio</label>
+                        <input
+                          type="text"
+                          value={sessionLocation}
+                          onChange={(e) => setSessionLocation(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2 text-white text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dynamic Schedule Preview */}
+                    {previewDates && previewDates.length > 0 && (
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs space-y-1">
+                        <div className="flex items-center text-emerald-400 font-bold space-x-1.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Auto-Schedule Preview: {previewDates.length} Sessions Queued</span>
+                        </div>
+                        <p className="text-slate-300 text-[11px]">
+                          • Session #1: <strong className="text-white">{previewDates[0].toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</strong> at {sessionTime}
+                        </p>
+                        <p className="text-slate-300 text-[11px]">
+                          • Session #{previewDates.length}: <strong className="text-white">{previewDates[previewDates.length - 1].toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</strong>
+                        </p>
+                        <p className="text-slate-400 text-[10px] mt-1 italic">
+                          All sessions will be directly editable and reschedulable anytime in your Coaching Calendar.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Custom Fields Manager */}

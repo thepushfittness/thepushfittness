@@ -163,16 +163,21 @@ export function TrainerDashboard({
         </div>
 
         {/* Sessions Today */}
-        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm hover:border-slate-700 transition">
+        <div 
+          onClick={onOpenSchedule}
+          className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm hover:border-cyan-500/50 cursor-pointer transition group"
+          title="Open Coaching Calendar"
+        >
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Today's Sessions</span>
+            <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-cyan-400 transition">Today's Sessions</span>
             <Calendar className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-display font-extrabold text-white">
             {analytics?.sessionsScheduledToday || 0}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">
-            {analytics?.sessionsCompletedWeek || 0} completed this week
+          <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>{analytics?.sessionsCompletedWeek || 0} done this week</span>
+            <span className="text-[10px] text-cyan-400 underline opacity-0 group-hover:opacity-100 transition">Open →</span>
           </div>
         </div>
 
