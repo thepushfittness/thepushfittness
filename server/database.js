@@ -169,16 +169,16 @@ class Database {
       sessionAttendance: 100,
       checkinAdherence: 100,
 
-      sessionsPurchased: Number(clientData.sessionsPurchased) || 10,
+      sessionsPurchased: Number(clientData.sessionsPurchased) || 12,
       sessionsCompleted: 0,
-      sessionsRemaining: Number(clientData.sessionsPurchased) || 10,
+      sessionsRemaining: Number(clientData.sessionsPurchased) || 12,
       sessionsCancelled: 0,
       sessionsMissed: 0,
 
-      planName: clientData.planName || 'Monthly Coaching',
-      monthlyPrice: Number(clientData.monthlyPrice) || 5000,
+      planName: clientData.planName || 'Personal Coaching Package (12 Sessions)',
+      monthlyPrice: Number(clientData.monthlyPrice) || 18000,
       billingCycle: clientData.billingCycle || 'Monthly',
-      paymentStatus: clientData.paymentStatus || 'due',
+      paymentStatus: clientData.paymentStatus || 'paid', // Prepaid by default
       nextPaymentDate: clientData.nextPaymentDate || new Date(Date.now() + 30*24*3600*1000).toISOString().split('T')[0],
       amountPaidToDate: 0,
       renewalsCount: 0,
@@ -192,10 +192,41 @@ class Database {
       consentForMarketingPhotos: !!clientData.consentForMarketingPhotos
     };
 
+    // Auto-record upfront advance payment if status is paid (Prepaid Coaching Model)
+    const initialAmount = Number(newClient.monthlyPrice) || 18000;
+    if (newClient.paymentStatus === 'paid') {
+      const initialPayment = {
+        id: `pay-${Date.now()}`,
+        clientId: id,
+        clientName: newClient.name,
+        referenceId: clientData.paymentReference || `TXN_${Date.now().toString().slice(-6)}`,
+        planName: newClient.planName,
+        amount: initialAmount,
+        billingCycle: newClient.billingCycle,
+        dueDate: newClient.startDate,
+        paidDate: newClient.startDate || new Date().toISOString().split('T')[0],
+        status: 'paid',
+        paymentMethod: clientData.paymentMethod || 'UPI (GPay / PhonePe)',
+        notes: clientData.paymentNotes || 'Upfront coaching package payment received beforehand',
+        createdAt: new Date().toISOString()
+      };
+      this.data.payments.push(initialPayment);
+
+      newClient.lastPaymentDate = initialPayment.paidDate;
+      newClient.amountPaidToDate = initialAmount;
+      newClient.lifetimeRevenue = initialAmount;
+      newClient.renewalsCount = 1;
+    }
+
     this.data.clients.push(newClient);
 
     // Initial timeline event
-    this.addTimelineEvent(id, 'client_created', 'Client Onboarded', `Client account created with goal: ${newClient.currentGoal}.`);
+    this.addTimelineEvent(
+      id, 
+      'client_created', 
+      'Client Onboarded (Prepaid)', 
+      `Account activated with ${newClient.sessionsPurchased} prepaid sessions. Upfront fee: ₹${initialAmount.toLocaleString()} (${newClient.paymentStatus === 'paid' ? 'Paid' : 'Pending'}).`
+    );
 
     // Initial measurement
     if (newClient.weightKg) {
@@ -703,16 +734,123 @@ class Database {
       client.lifetimeRevenue = (client.lifetimeRevenue || 0) + Number(newPayment.amount);
       client.renewalsCount = (client.renewalsCount || 0) + 1;
 
+      // If sessions are credited with this payment (e.g. 12 sessions for monthly renewal)
+      if (paymentData.sessionsToAdd && Number(paymentData.sessionsToAdd) > 0) {
+        const added = Number(paymentData.sessionsToAdd);
+        client.sessionsPurchased = (Number(client.sessionsPurchased) || 0) + added;
+        client.sessionsRemaining = Math.max(0, client.sessionsPurchased - (Number(client.sessionsCompleted) || 0));
+        
+        // Extend next payment date by 30 days
+        const nextDateObj = new Date(newPayment.paidDate || Date.now());
+        nextDateObj.setDate(nextDateObj.getDate() + 30);
+        client.nextPaymentDate = nextDateObj.toISOString().split('T')[0];
+      }
+
       this.addTimelineEvent(
         client.id,
         'payment_received',
-        'Payment Recorded',
-        `Recorded ₹${newPayment.amount} for ${newPayment.planName} (${newPayment.referenceId}).`
+        'Advance Payment Recorded',
+        `Recorded ₹${Number(newPayment.amount).toLocaleString()} for ${newPayment.planName} via ${newPayment.paymentMethod || 'UPI'}.${paymentData.sessionsToAdd ? ` Added +${paymentData.sessionsToAdd} sessions (Total remaining: ${client.sessionsRemaining}).` : ''}`
       );
     }
 
     this.save();
     return newPayment;
+  }
+
+  // Instant 1-Click Package Renewal for Prepaid Coaching
+  renewClientPackage(clientId, renewalData = {}) {
+    const client = this.getClientById(clientId);
+    if (!client) return null;
+
+    const amount = Number(renewalData.amount) || Number(client.monthlyPrice) || 18000;
+    const sessionsToAdd = Number(renewalData.sessionsToAdd) || 12;
+    const paymentMethod = renewalData.paymentMethod || 'UPI (GPay / PhonePe)';
+    const paidDate = renewalData.paidDate || new Date().toISOString().split('T')[0];
+
+    client.sessionsPurchased = (Number(client.sessionsPurchased) || 0) + sessionsToAdd;
+    client.sessionsRemaining = Math.max(0, client.sessionsPurchased - (Number(client.sessionsCompleted) || 0));
+    client.paymentStatus = 'paid';
+    client.lastPaymentDate = paidDate;
+    client.amountPaidToDate = (Number(client.amountPaidToDate) || 0) + amount;
+    client.lifetimeRevenue = (Number(client.lifetimeRevenue) || 0) + amount;
+    client.renewalsCount = (Number(client.renewalsCount) || 0) + 1;
+
+    // Extend nextPaymentDate by 30 days from paid date
+    const nextDateObj = new Date(paidDate);
+    nextDateObj.setDate(nextDateObj.getDate() + 30);
+    client.nextPaymentDate = nextDateObj.toISOString().split('T')[0];
+
+    const paymentId = `pay-${Date.now()}`;
+    const newPayment = {
+      id: paymentId,
+      clientId: client.id,
+      clientName: client.name,
+      referenceId: renewalData.referenceId || `TXN_${Date.now().toString().slice(-6)}`,
+      planName: client.planName || 'Personal Coaching Package (12 Sessions)',
+      amount,
+      billingCycle: client.billingCycle || 'Monthly',
+      dueDate: paidDate,
+      paidDate,
+      status: 'paid',
+      paymentMethod,
+      notes: renewalData.notes || `Package renewed upfront: ₹${amount.toLocaleString()} for +${sessionsToAdd} coaching sessions`,
+      createdAt: new Date().toISOString()
+    };
+    this.data.payments.push(newPayment);
+
+    this.addTimelineEvent(
+      client.id,
+      'package_renewed',
+      'Package Renewed Upfront',
+      `Advance payment of ₹${amount.toLocaleString()} received via ${paymentMethod}. Credited ${sessionsToAdd} new sessions (Total remaining: ${client.sessionsRemaining}).`
+    );
+
+    this.save();
+    return { client, payment: newPayment };
+  }
+
+  // Quick 1-Click Log Session from Client Roster
+  quickLogSession(clientId, details = {}) {
+    const client = this.getClientById(clientId);
+    if (!client) return null;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sessionTime = details.time || '10:00 AM';
+
+    const newSession = {
+      id: `sess-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      trainerId: 'user-trainer-1',
+      clientId: client.id,
+      clientName: client.name,
+      date: details.date || todayStr,
+      time: sessionTime,
+      durationMinutes: details.durationMinutes || 60,
+      location: details.location || 'The Push Fitness Studio',
+      sessionType: details.sessionType || 'Personal Training Session',
+      status: 'completed',
+      notes: details.notes || '1-Click completed session logged from client roster',
+      completedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+
+    this.data.sessions.push(newSession);
+
+    // Recalculate sessions
+    client.sessionsCompleted = (Number(client.sessionsCompleted) || 0) + 1;
+    client.sessionsRemaining = Math.max(0, (Number(client.sessionsPurchased) || 0) - client.sessionsCompleted);
+    client.lastSessionDate = newSession.date;
+    client.lastActivityDate = todayStr;
+
+    this.addTimelineEvent(
+      client.id,
+      'session_completed',
+      'Coaching Session Completed',
+      `Completed session with Coach Pushkar. ${client.sessionsRemaining} sessions left in prepaid package.`
+    );
+
+    this.save();
+    return { client, session: newSession };
   }
 
   updatePayment(id, updates) {
@@ -733,7 +871,7 @@ class Database {
         client.id,
         'payment_received',
         'Payment Succeeded',
-        `Marked invoice ₹${updated.amount} as Paid.`
+        `Marked invoice ₹${Number(updated.amount).toLocaleString()} as Paid.`
       );
     }
 

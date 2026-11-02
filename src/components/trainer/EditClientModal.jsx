@@ -66,11 +66,11 @@ export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onCl
 
     // Package & Billing
     planName: '',
-    monthlyPrice: 5000,
+    monthlyPrice: 18000,
     billingCycle: 'Monthly',
     sessionsPurchased: 12,
     sessionsCompleted: 0,
-    paymentStatus: 'due',
+    paymentStatus: 'paid',
     nextPaymentDate: '',
 
     customFields: {}

@@ -316,6 +316,20 @@ app.delete('/api/clients/:id', authenticateToken, requireTrainer, (req, res) => 
   res.json({ success: true, message: 'Client permanently deleted.' });
 });
 
+// Instant 1-Click Package Renewal for Prepaid Coaching (Trainer only)
+app.post('/api/clients/:id/renew', authenticateToken, requireTrainer, (req, res) => {
+  const result = db.renewClientPackage(req.params.id, req.body);
+  if (!result) return res.status(404).json({ error: 'Client not found' });
+  res.json(result);
+});
+
+// Quick 1-Click Log Session Completed from Client Roster (Trainer only)
+app.post('/api/clients/:id/quick-session', authenticateToken, requireTrainer, (req, res) => {
+  const result = db.quickLogSession(req.params.id, req.body);
+  if (!result) return res.status(404).json({ error: 'Client not found' });
+  res.json(result);
+});
+
 // --- Programs & Workouts ---
 
 app.get('/api/programs', authenticateToken, (req, res) => {

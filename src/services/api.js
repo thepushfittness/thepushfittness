@@ -149,6 +149,8 @@ export const api = {
   archiveClient: (id) => request(`/clients/${id}/archive`, { method: 'POST' }),
   restoreClient: (id) => request(`/clients/${id}/restore`, { method: 'POST' }),
   deleteClient: (id) => request(`/clients/${id}`, { method: 'DELETE' }),
+  renewClientPackage: (id, renewalData = {}) => request(`/clients/${id}/renew`, { method: 'POST', body: renewalData }),
+  quickLogSession: (id, sessionData = {}) => request(`/clients/${id}/quick-session`, { method: 'POST', body: sessionData }),
 
   // Programs & Workouts
   getPrograms: (clientId) => request(`/programs${clientId ? `?clientId=${clientId}` : ''}`),

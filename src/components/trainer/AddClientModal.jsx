@@ -65,12 +65,14 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
     waterTargetMl: 2800,
     nutritionNotes: '',
 
-    // Package
-    planName: 'Personal Coaching Package',
-    monthlyPrice: 5000,
+    // Package & Upfront Billing
+    planName: 'Personal Coaching Package (12 Sessions)',
+    monthlyPrice: 18000,
     billingCycle: 'Monthly',
     sessionsPurchased: 12,
-    paymentStatus: 'due',
+    paymentStatus: 'paid', // Prepaid upfront model
+    paymentMethod: 'UPI (GPay / PhonePe)',
+    paymentReference: '',
     nextPaymentDate: new Date(Date.now() + 30*24*3600*1000).toISOString().split('T')[0],
 
     customFields: {}
@@ -574,7 +576,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 font-semibold block mb-1">Next Payment Date</label>
+                  <label className="text-slate-400 font-semibold block mb-1">Next Renewal Date</label>
                   <input
                     type="date"
                     value={formData.nextPaymentDate}
@@ -582,6 +584,83 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
+              </div>
+
+              {/* Upfront Advance Payment Options */}
+              <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-emerald-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="w-4 h-4 text-emerald-400" />
+                    <span className="text-white font-bold text-xs">Prepaid Billing Status (Charged Beforehand)</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    Prepaid Model
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, paymentStatus: 'paid' })}
+                    className={`p-2.5 rounded-xl border text-left text-xs transition ${
+                      formData.paymentStatus === 'paid'
+                        ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-400 font-bold text-[10px] uppercase">Paid Upfront</span>
+                      {formData.paymentStatus === 'paid' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                    </div>
+                    <div className="text-xs font-semibold text-white mt-0.5">₹{formData.monthlyPrice.toLocaleString()} Paid in Advance</div>
+                    <div className="text-[10px] text-slate-400">Activates {formData.sessionsPurchased} sessions immediately</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, paymentStatus: 'due' })}
+                    className={`p-2.5 rounded-xl border text-left text-xs transition ${
+                      formData.paymentStatus === 'due'
+                        ? 'bg-amber-500/15 border-amber-500 text-white font-bold shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-amber-400 font-bold text-[10px] uppercase">Payment Pending</span>
+                      {formData.paymentStatus === 'due' && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                    </div>
+                    <div className="text-xs font-semibold text-white mt-0.5">Pay on 1st Session</div>
+                    <div className="text-[10px] text-slate-400">Mark as payment due</div>
+                  </button>
+                </div>
+
+                {formData.paymentStatus === 'paid' && (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label className="text-slate-400 text-[11px] font-semibold block mb-1">Payment Method</label>
+                      <select
+                        value={formData.paymentMethod}
+                        onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-white text-xs"
+                      >
+                        <option value="UPI (GPay / PhonePe)">UPI (GPay / PhonePe / Paytm)</option>
+                        <option value="Bank Transfer (NEFT/IMPS)">Bank Transfer (NEFT/IMPS)</option>
+                        <option value="Cash">Cash (Handed in Studio)</option>
+                        <option value="Debit / Credit Card">Debit / Credit Card</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-[11px] font-semibold block mb-1">Payment Reference (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="UPI UTR or Txn ID"
+                        value={formData.paymentReference}
+                        onChange={(e) => setFormData({ ...formData, paymentReference: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* AUTO-SCHEDULE 3-DAYS/WEEK DIRECTLY FROM START DATE */}

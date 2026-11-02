@@ -23,7 +23,11 @@ import {
   Download,
   Phone,
   Mail,
-  UserCheck
+  UserCheck,
+  Zap,
+  Sparkles,
+  RefreshCw,
+  CheckCircle2
 } from 'lucide-react';
 
 export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter = 'all' }) {
@@ -39,6 +43,14 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
   // Confirmation modal state for permanent delete & edit modal
   const [deleteConfirmClient, setDeleteConfirmClient] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
+
+  // Quick 1-click package renewal modal state
+  const [renewClient, setRenewClient] = useState(null);
+  const [renewAmount, setRenewAmount] = useState(18000);
+  const [renewSessions, setRenewSessions] = useState(12);
+  const [renewMethod, setRenewMethod] = useState('UPI (GPay / PhonePe)');
+  const [renewNotes, setRenewNotes] = useState('');
+  const [isRenewing, setIsRenewing] = useState(false);
 
   const fetchClients = async () => {
     try {
@@ -99,6 +111,54 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
       fetchClients();
     } catch (err) {
       showToast('Failed to delete client', 'error');
+    }
+  };
+
+  const handleQuickLog = async (client, e) => {
+    e.stopPropagation();
+    if (Number(client.sessionsRemaining) <= 0) {
+      showToast(`${client.name} has 0 prepaid sessions remaining! Please renew package first.`, 'error');
+      openRenewModal(client, e);
+      return;
+    }
+    try {
+      const res = await api.quickLogSession(client.id, {
+        notes: '1-on-1 Coaching Session completed'
+      });
+      showToast(`Logged session for ${client.name}! ${res.client.sessionsRemaining} prepaid sessions remaining.`);
+      setClients(prev => prev.map(c => c.id === client.id ? res.client : c));
+    } catch (err) {
+      showToast(err.message || 'Failed to log session', 'error');
+    }
+  };
+
+  const openRenewModal = (client, e) => {
+    if (e) e.stopPropagation();
+    setRenewClient(client);
+    setRenewAmount(Number(client.monthlyPrice) || 18000);
+    setRenewSessions(12);
+    setRenewMethod('UPI (GPay / PhonePe)');
+    setRenewNotes('');
+  };
+
+  const handleConfirmRenew = async (e) => {
+    e.preventDefault();
+    if (!renewClient) return;
+    try {
+      setIsRenewing(true);
+      const res = await api.renewClientPackage(renewClient.id, {
+        amount: Number(renewAmount),
+        sessionsToAdd: Number(renewSessions),
+        paymentMethod: renewMethod,
+        notes: renewNotes
+      });
+      showToast(`Package renewed for ${res.client.name}! +${renewSessions} sessions credited.`);
+      setClients(prev => prev.map(c => c.id === renewClient.id ? res.client : c));
+      setRenewClient(null);
+    } catch (err) {
+      showToast(err.message || 'Failed to renew package', 'error');
+    } finally {
+      setIsRenewing(false);
     }
   };
 
@@ -281,10 +341,10 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
                   <th className="py-3 px-4">Lifecycle Status</th>
                   <th className="py-3 px-4">Primary Goal</th>
                   <th className="py-3 px-4">Adherence</th>
-                  <th className="py-3 px-4">Sessions</th>
-                  <th className="py-3 px-4">Billing</th>
+                  <th className="py-3 px-4">Prepaid Sessions</th>
+                  <th className="py-3 px-4">Billing & Fee</th>
                   <th className="py-3 px-4">Last Activity</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-right">Quick Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
@@ -351,21 +411,30 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
                       <div className="text-[10px] text-slate-500 mt-0.5">{c.adherenceStatus}</div>
                     </td>
 
-                    {/* Sessions */}
+                    {/* Prepaid Sessions */}
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-white">
-                        {c.sessionsCompleted} <span className="text-slate-500 font-normal">/ {c.sessionsPurchased}</span>
+                      <div className="font-bold text-white flex items-center space-x-1.5">
+                        <span className="text-sm font-extrabold">{c.sessionsRemaining ?? 0}</span>
+                        <span className="text-slate-500 font-normal text-xs">/ {c.sessionsPurchased ?? 12} left</span>
                       </div>
-                      <div className="text-[10px] text-emerald-400 font-medium">
-                        {c.sessionsRemaining} remaining
+                      <div className="mt-1 flex items-center space-x-1.5">
+                        {Number(c.sessionsRemaining) <= 2 ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-red-500/20 text-red-400 border border-red-500/30">
+                            Low ({c.sessionsRemaining} left)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-emerald-400 font-medium">
+                            {c.sessionsCompleted || 0} completed
+                          </span>
+                        )}
                       </div>
                     </td>
 
                     {/* Billing */}
                     <td className="py-3.5 px-4">
                       <div>{getPaymentBadge(c.paymentStatus)}</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">
-                        ₹{c.monthlyPrice}/mo • Next: {c.nextPaymentDate}
+                      <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                        ₹{Number(c.monthlyPrice || 18000).toLocaleString()}/mo • Prepaid
                       </div>
                     </td>
 
@@ -378,9 +447,31 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
                       )}
                     </td>
 
-                    {/* Actions */}
+                    {/* Quick Actions */}
                     <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end space-x-1.5">
+                        {/* 1-Tap Log Session */}
+                        <button
+                          onClick={(e) => handleQuickLog(c, e)}
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/30 text-xs font-bold transition flex items-center space-x-1 shadow-sm"
+                          title="1-Tap Log Completed Session (-1 Prepaid Session)"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>Log Sess</span>
+                        </button>
+
+                        {/* Quick Renew if Low */}
+                        {(Number(c.sessionsRemaining) <= 3 || c.paymentStatus !== 'paid') && (
+                          <button
+                            onClick={(e) => openRenewModal(c, e)}
+                            className="px-2 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 text-xs font-bold transition flex items-center space-x-1 shadow-sm"
+                            title="1-Click Renew Package (+12 Sessions for ₹18,000)"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Renew</span>
+                          </button>
+                        )}
+
                         <button
                           onClick={() => setEditingClient(c)}
                           className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-400 transition"
@@ -475,6 +566,121 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
                 Yes, Permanently Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1-Click Package Renewal Modal */}
+      {renewClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Renew Coaching Package</h3>
+                  <p className="text-xs text-slate-400">Prepaid upfront package for {renewClient.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRenewClient(null)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmRenew} className="mt-4 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Package Fee (₹)</label>
+                  <input
+                    type="number"
+                    value={renewAmount}
+                    onChange={(e) => setRenewAmount(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Sessions Credited</label>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-emerald-400 font-bold">+</span>
+                    <input
+                      type="number"
+                      value={renewSessions}
+                      onChange={(e) => setRenewSessions(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm text-center"
+                      required
+                      min="1"
+                      max="100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Payment Method (Received Beforehand)</label>
+                <select
+                  value={renewMethod}
+                  onChange={(e) => setRenewMethod(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                >
+                  <option value="UPI (GPay / PhonePe)">UPI (GPay / PhonePe / Paytm)</option>
+                  <option value="Bank Transfer">Bank Transfer (NEFT / IMPS)</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Credit / Debit Card">Credit / Debit Card</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Payment Reference / Note</label>
+                <input
+                  type="text"
+                  placeholder="e.g. UPI Ref / GPay receipt"
+                  value={renewNotes}
+                  onChange={(e) => setRenewNotes(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+                <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Automatic Package Renewal:</span>
+                </div>
+                <p>• Current balance: <strong>{renewClient.sessionsRemaining || 0}</strong> sessions</p>
+                <p>• New balance will be: <strong>{(Number(renewClient.sessionsRemaining) || 0) + Number(renewSessions)}</strong> sessions</p>
+                <p>• Logs payment receipt of <strong>₹{Number(renewAmount).toLocaleString()}</strong></p>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setRenewClient(null)}
+                  disabled={isRenewing}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-semibold rounded-xl hover:bg-slate-700 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRenewing}
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1.5"
+                >
+                  {isRenewing ? (
+                    <span>Renewing...</span>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Confirm & Credit +{renewSessions} Sessions</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

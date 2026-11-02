@@ -103,6 +103,63 @@ export function ClientProfileView({
   const [bookType, setBookType] = useState('1-on-1 In-Person');
   const [bookNotes, setBookNotes] = useState('');
 
+  // Quick 1-click package renewal in Profile
+  const [showProfileRenewModal, setShowProfileRenewModal] = useState(false);
+  const [profileRenewAmount, setProfileRenewAmount] = useState(18000);
+  const [profileRenewSessions, setProfileRenewSessions] = useState(12);
+  const [profileRenewMethod, setProfileRenewMethod] = useState('UPI (GPay / PhonePe)');
+  const [profileRenewNotes, setProfileRenewNotes] = useState('');
+  const [isProfileRenewing, setIsProfileRenewing] = useState(false);
+
+  const openProfileRenewModal = () => {
+    if (!client) return;
+    setProfileRenewAmount(Number(client.monthlyPrice) || 18000);
+    setProfileRenewSessions(12);
+    setProfileRenewMethod('UPI (GPay / PhonePe)');
+    setProfileRenewNotes('');
+    setShowProfileRenewModal(true);
+  };
+
+  const handleConfirmProfileRenew = async (e) => {
+    e.preventDefault();
+    if (!client) return;
+    try {
+      setIsProfileRenewing(true);
+      const res = await api.renewClientPackage(client.id, {
+        amount: Number(profileRenewAmount),
+        sessionsToAdd: Number(profileRenewSessions),
+        paymentMethod: profileRenewMethod,
+        notes: profileRenewNotes
+      });
+      showToast(`Package renewed for ${client.name}! +${profileRenewSessions} sessions credited.`);
+      setShowProfileRenewModal(false);
+      loadClientData();
+    } catch (err) {
+      showToast(err.message || 'Failed to renew package', 'error');
+    } finally {
+      setIsProfileRenewing(false);
+    }
+  };
+
+  const handleDirectLogSession = async () => {
+    if (!client) return;
+    if (Number(client.sessionsRemaining) <= 0) {
+      showToast(`${client.name} has 0 prepaid sessions remaining! Please renew package first.`, 'error');
+      openProfileRenewModal();
+      return;
+    }
+    try {
+      const res = await api.quickLogSession(client.id, {
+        location: 'Apex Fitness Studio',
+        notes: '1-on-1 Coaching Session completed'
+      });
+      showToast(`Logged session for ${client.name}! ${res.client.sessionsRemaining} prepaid sessions remaining.`);
+      loadClientData();
+    } catch (err) {
+      showToast(err.message || 'Failed to log session', 'error');
+    }
+  };
+
   const openEditClient = (step = 1) => {
     setEditClientStep(step);
     setShowEditClientModal(true);
@@ -385,6 +442,14 @@ export function ClientProfileView({
             <span>Message</span>
           </button>
           <button
+            onClick={openProfileRenewModal}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-450 text-slate-950 text-xs font-bold transition shadow-sm"
+            title="1-Click Package Renewal (+12 Sessions for ₹18,000)"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Renew (₹18k)</span>
+          </button>
+          <button
             onClick={() => onOpenSchedule(client.id)}
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold transition shadow-sm"
           >
@@ -423,7 +488,7 @@ export function ClientProfileView({
                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                     : 'bg-red-500/10 text-red-400 border-red-500/30'
                 }`}>
-                  {client.paymentStatus === 'paid' ? 'Paid' : 'Payment Overdue'}
+                  {client.paymentStatus === 'paid' ? 'Paid & Active' : 'Payment Pending'}
                 </span>
               </div>
 
@@ -468,11 +533,17 @@ export function ClientProfileView({
             </div>
 
             <div className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl text-center col-span-2 sm:col-span-1">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Package Balance</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Prepaid Package</span>
               <span className="text-lg font-display font-extrabold text-amber-400 mt-0.5 block">
                 {client.sessionsRemaining} left
               </span>
-              <span className="text-[10px] text-slate-500">{client.sessionsCompleted} of {client.sessionsPurchased} used</span>
+              <span className="text-[10px] text-slate-500 block">₹{Number(client.monthlyPrice || 18000).toLocaleString()}/mo • {client.sessionsCompleted || 0} of {client.sessionsPurchased || 12} used</span>
+              <button
+                onClick={openProfileRenewModal}
+                className="text-[10px] text-emerald-400 hover:underline font-bold mt-1 inline-block"
+              >
+                + Renew Package
+              </button>
             </div>
           </div>
         </div>
@@ -1071,13 +1142,23 @@ export function ClientProfileView({
                 Package Balance: <strong className="text-emerald-400">{client.sessionsRemaining} Sessions Remaining</strong> (Used {client.sessionsCompleted} of {client.sessionsPurchased})
               </p>
             </div>
-            <button
-              onClick={() => setShowBookSessionModal(true)}
-              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Schedule New Session</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={handleDirectLogSession}
+                className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/30 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
+                title="1-Click Log Completed Session Today (-1 Remaining Credit)"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>⚡ 1-Click Log Today's Session</span>
+              </button>
+              <button
+                onClick={() => setShowBookSessionModal(true)}
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Schedule New Session</span>
+              </button>
+            </div>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
@@ -1181,6 +1262,37 @@ export function ClientProfileView({
       {/* 6. PAYMENTS TAB */}
       {activeTab === 'payments' && (
         <div className="space-y-6">
+          {/* Prepaid Package Card */}
+          <div className="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Monthly Prepaid Coaching Package</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Charged Beforehand</span>
+              </div>
+              <div className="text-2xl font-display font-extrabold text-white mt-1">
+                ₹{Number(client.monthlyPrice || 18000).toLocaleString()} <span className="text-xs font-normal text-slate-400">/ 12 Sessions</span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">
+                Session Credits: <strong className="text-emerald-400">{client.sessionsRemaining} left</strong> • Completed: <strong className="text-slate-400">{client.sessionsCompleted} of {client.sessionsPurchased}</strong> • Renewals: <strong className="text-slate-400">{client.renewalsCount || 1}</strong>
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 self-start sm:self-auto">
+              <button
+                onClick={openProfileRenewModal}
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>⚡ Renew Package (+12 Sessions)</span>
+              </button>
+              <button
+                onClick={() => onOpenPayment(client.id)}
+                className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition border border-slate-700"
+              >
+                + Custom Payment
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white">Payment & Subscription Invoices</h2>
@@ -1188,12 +1300,6 @@ export function ClientProfileView({
                 Lifetime Revenue: <strong className="text-emerald-400">₹{client.lifetimeRevenue}</strong> • Next Due Date: <strong className="text-white">{client.nextPaymentDate}</strong>
               </p>
             </div>
-            <button
-              onClick={() => onOpenPayment(client.id)}
-              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm"
-            >
-              + Record Payment
-            </button>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
@@ -1911,6 +2017,121 @@ export function ClientProfileView({
           loadClientData();
         }}
       />
+
+      {/* 1-CLICK PACKAGE RENEWAL MODAL */}
+      {showProfileRenewModal && client && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Renew Coaching Package</h3>
+                  <p className="text-xs text-slate-400">Prepaid upfront renewal for {client.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProfileRenewModal(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmProfileRenew} className="mt-4 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Package Fee (₹)</label>
+                  <input
+                    type="number"
+                    value={profileRenewAmount}
+                    onChange={(e) => setProfileRenewAmount(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Sessions Credited</label>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-emerald-400 font-bold">+</span>
+                    <input
+                      type="number"
+                      value={profileRenewSessions}
+                      onChange={(e) => setProfileRenewSessions(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm text-center"
+                      required
+                      min="1"
+                      max="100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Payment Method (Received Beforehand)</label>
+                <select
+                  value={profileRenewMethod}
+                  onChange={(e) => setProfileRenewMethod(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                >
+                  <option value="UPI (GPay / PhonePe)">UPI (GPay / PhonePe / Paytm)</option>
+                  <option value="Bank Transfer">Bank Transfer (NEFT / IMPS)</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Credit / Debit Card">Credit / Debit Card</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Payment Reference / Note</label>
+                <input
+                  type="text"
+                  placeholder="e.g. UPI Ref / GPay receipt"
+                  value={profileRenewNotes}
+                  onChange={(e) => setProfileRenewNotes(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+                <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Automatic Package Renewal:</span>
+                </div>
+                <p>• Current balance: <strong>{client.sessionsRemaining || 0}</strong> sessions</p>
+                <p>• New balance will be: <strong>{(Number(client.sessionsRemaining) || 0) + Number(profileRenewSessions)}</strong> sessions</p>
+                <p>• Logs payment receipt of <strong>₹{Number(profileRenewAmount).toLocaleString()}</strong></p>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileRenewModal(false)}
+                  disabled={isProfileRenewing}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-semibold rounded-xl hover:bg-slate-700 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProfileRenewing}
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1.5"
+                >
+                  {isProfileRenewing ? (
+                    <span>Renewing...</span>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Confirm & Credit +{profileRenewSessions} Sessions</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
