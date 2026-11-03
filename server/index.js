@@ -150,7 +150,7 @@ app.post('/api/auth/reset-password', (req, res) => {
 
 // Update Profile & Password endpoint
 app.put('/api/auth/profile', authenticateToken, (req, res) => {
-  const { name, email, phone, avatar, password } = req.body;
+  const { name, email, phone, avatar, password, dateOfBirth, heightCm, weightKg, targetWeightKg, currentGoal, gender, profileCompleted } = req.body;
   const user = db.findUserById(req.user.id);
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
@@ -163,15 +163,23 @@ app.put('/api/auth/profile', authenticateToken, (req, res) => {
   if (password && password.trim()) user.password = password.trim();
 
   // If user is a client, also sync to client record
+  let clientProfile = null;
   if (user.clientId) {
-    const client = db.getClientById(user.clientId);
-    if (client) {
-      if (name && name.trim()) client.name = name.trim();
-      if (email && email.trim()) client.email = email.toLowerCase().trim();
-      if (phone !== undefined) client.phone = phone.trim();
-      if (avatar !== undefined) client.avatar = avatar.trim();
-      if (password && password.trim()) client.password = password.trim();
-    }
+    const clientUpdates = {};
+    if (name && name.trim()) clientUpdates.name = name.trim();
+    if (email && email.trim()) clientUpdates.email = email.toLowerCase().trim();
+    if (phone !== undefined) clientUpdates.phone = phone.trim();
+    if (avatar !== undefined) clientUpdates.avatar = avatar.trim();
+    if (password && password.trim()) clientUpdates.password = password.trim();
+    if (dateOfBirth !== undefined) clientUpdates.dateOfBirth = dateOfBirth;
+    if (gender !== undefined) clientUpdates.gender = gender;
+    if (heightCm !== undefined) clientUpdates.heightCm = Number(heightCm);
+    if (weightKg !== undefined) clientUpdates.weightKg = Number(weightKg);
+    if (targetWeightKg !== undefined) clientUpdates.targetWeightKg = Number(targetWeightKg);
+    if (currentGoal !== undefined) clientUpdates.currentGoal = currentGoal;
+    if (profileCompleted !== undefined) clientUpdates.profileCompleted = profileCompleted;
+
+    clientProfile = db.updateClient(user.clientId, clientUpdates);
   }
 
   db.save();
@@ -179,7 +187,7 @@ app.put('/api/auth/profile', authenticateToken, (req, res) => {
 
   res.json({
     success: true,
-    message: 'Profile and credentials updated successfully',
+    message: 'Profile updated successfully',
     token,
     user: {
       id: user.id,
@@ -189,7 +197,8 @@ app.put('/api/auth/profile', authenticateToken, (req, res) => {
       clientId: user.clientId,
       avatar: user.avatar,
       phone: user.phone
-    }
+    },
+    clientProfile
   });
 });
 

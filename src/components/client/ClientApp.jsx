@@ -32,7 +32,12 @@ import {
   Upload,
   Trash2,
   Image,
-  X
+  X,
+  UserCheck,
+  User,
+  Edit3,
+  Phone,
+  Target
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -137,6 +142,91 @@ export function ClientApp() {
   const [newPhotoNotes, setNewPhotoNotes] = useState('');
   const [newPhotoConsent, setNewPhotoConsent] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Comprehensive Client Profile Completion & Edit Modal State
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profAvatar, setProfAvatar] = useState('');
+  const [profAvatarPresetGender, setProfAvatarPresetGender] = useState('Male');
+  const [profGender, setProfGender] = useState('Male');
+  const [profBirthdate, setProfBirthdate] = useState('');
+  const [profPhone, setProfPhone] = useState('');
+  const [profHeight, setProfHeight] = useState('');
+  const [profWeight, setProfWeight] = useState('');
+  const [profTargetWeight, setProfTargetWeight] = useState('');
+  const [profGoal, setProfGoal] = useState('Fat Loss & Toning');
+  const [profGoalNotes, setProfGoalNotes] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const handleProfAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('Image too large. Please select an image under 8MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfAvatar(reader.result);
+      showToast('Photo selected! Click Save to apply.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleOpenProfileModal = () => {
+    if (!client) return;
+    setProfAvatar(client.avatar || user?.avatar || MALE_AVATAR_PRESETS[0]);
+    const gender = client.gender || 'Male';
+    setProfGender(gender);
+    setProfAvatarPresetGender(gender === 'Female' ? 'Female' : 'Male');
+    setProfBirthdate(client.dateOfBirth || '');
+    setProfPhone(client.phone || user?.phone || '');
+    setProfHeight(client.heightCm || '');
+    setProfWeight(client.weightKg || '');
+    setProfTargetWeight(client.targetWeightKg || '');
+    setProfGoal(client.currentGoal || 'Fat Loss & Toning');
+    setProfGoalNotes(client.goalsList?.[0] || '');
+    setShowProfileModal(true);
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    if (!client?.id) return;
+
+    try {
+      setIsSavingProfile(true);
+      const updates = {
+        avatar: profAvatar,
+        gender: profGender,
+        dateOfBirth: profBirthdate,
+        phone: profPhone.trim(),
+        heightCm: Number(profHeight) || 0,
+        weightKg: Number(profWeight) || 0,
+        targetWeightKg: Number(profTargetWeight) || 0,
+        currentGoal: profGoal.trim(),
+        goalsList: profGoalNotes.trim() ? [profGoalNotes.trim()] : [profGoal.trim()],
+        profileCompleted: true
+      };
+
+      await api.updateProfile(updates);
+      await api.updateClient(client.id, updates);
+
+      setClient(prev => ({ ...prev, ...updates }));
+      if (typeof refreshMe === 'function') refreshMe();
+
+      confetti({
+        particleCount: 90,
+        spread: 60,
+        origin: { y: 0.6 }
+      });
+
+      showToast('🎉 Your fitness profile and goals have been saved! Coach Pushkar has your details.');
+      setShowProfileModal(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to save profile', 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Load client data
   const loadClientData = async () => {
@@ -530,8 +620,8 @@ export function ClientApp() {
           <div className="flex items-center space-x-3">
             <div
               className="relative group cursor-pointer shrink-0"
-              onClick={handleOpenAvatarModal}
-              title="Click to update your profile photo"
+              onClick={handleOpenProfileModal}
+              title="Click to update your profile & photo"
             >
               <img
                 src={client.avatar}
@@ -539,10 +629,10 @@ export function ClientApp() {
                 className="w-12 h-12 rounded-2xl border-2 border-emerald-500/50 object-cover shadow-md transition group-hover:opacity-80"
               />
               <div className="absolute inset-0 bg-slate-950/60 rounded-2xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                <Camera className="w-5 h-5 text-emerald-400" />
+                <Edit3 className="w-5 h-5 text-emerald-400" />
               </div>
               <span className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 text-emerald-400 p-0.5 rounded-full shadow">
-                <Camera className="w-2.5 h-2.5" />
+                <Edit3 className="w-2.5 h-2.5" />
               </span>
             </div>
             <div>
@@ -553,14 +643,15 @@ export function ClientApp() {
                 </h1>
                 <button
                   type="button"
-                  onClick={handleOpenAvatarModal}
-                  className="text-[10px] text-emerald-400 hover:underline font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
+                  onClick={handleOpenProfileModal}
+                  className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30 transition flex items-center space-x-1"
                 >
-                  Edit Photo
+                  <UserCheck className="w-3 h-3" />
+                  <span>My Profile & Goals</span>
                 </button>
               </div>
               <p className="text-xs text-slate-400">
-                🎯 {client.currentGoal} • <strong className="text-emerald-400">{client.workoutAdherence}%</strong> compliance
+                🎯 {client.currentGoal || 'Custom Training'} • <strong className="text-emerald-400">{client.workoutAdherence || 100}%</strong> compliance
               </p>
             </div>
           </div>
@@ -580,22 +671,56 @@ export function ClientApp() {
         <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-800/80 text-center">
           <div className="bg-slate-950/60 p-2.5 rounded-xl">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Current Wt</span>
-            <span className="text-base font-extrabold text-white mt-0.5 block">{client.weightKg} kg</span>
+            <span className="text-base font-extrabold text-white mt-0.5 block">
+              {client.weightKg ? `${client.weightKg} kg` : '--'}
+            </span>
           </div>
           <div className="bg-slate-950/60 p-2.5 rounded-xl">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Progress</span>
             <span className="text-base font-extrabold text-emerald-400 mt-0.5 block">
-              {(client.weightKg - client.startingWeightKg).toFixed(1)} kg
+              {(client.weightKg && client.startingWeightKg) 
+                ? `${(client.weightKg - client.startingWeightKg).toFixed(1)} kg`
+                : '0.0 kg'}
             </span>
           </div>
           <div className="bg-slate-950/60 p-2.5 rounded-xl">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Sessions</span>
             <span className="text-base font-extrabold text-amber-400 mt-0.5 block">
-              {client.sessionsRemaining} left
+              {client.sessionsRemaining ?? 12} left
             </span>
           </div>
         </div>
       </div>
+
+      {/* Profile Completion Reminder Banner */}
+      {(!client.profileCompleted || !client.heightCm || !client.weightKg || !client.phone || !client.dateOfBirth) && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-emerald-500/15 to-slate-900 border border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-start space-x-3">
+            <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 shrink-0">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h4 className="text-sm font-bold text-white">Complete Your Fitness Profile</h4>
+                <span className="bg-amber-500 text-slate-950 text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full">
+                  Action Required
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Coach Pushkar has activated your membership! Please add your photo, birthdate, WhatsApp phone, height, weight, and fitness goals so workouts can be tailored to you.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenProfileModal}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center justify-center space-x-1 shrink-0"
+          >
+            <span>Complete Profile Now</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Floating Rest Timer Widget (when running) */}
       {restTimerSeconds !== null && (
@@ -1719,6 +1844,287 @@ export function ClientApp() {
                   className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition disabled:opacity-50"
                 >
                   {uploadingPhoto ? 'Saving Photo...' : 'Add to My Progress'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CLIENT PROFILE & GOALS COMPLETION MODAL */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-md p-3 sm:p-6 flex justify-center items-start">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-5 sm:p-7 max-w-xl w-full shadow-2xl my-4 sm:my-8 space-y-5 text-xs animate-in fade-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                  <UserCheck className="w-5 h-5 text-emerald-400" />
+                  <span>My Fitness Profile & Goals</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Personalize your profile so Coach Pushkar can program specifically for you
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-5">
+              {/* Profile Avatar Section */}
+              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <label className="text-xs font-bold text-white uppercase tracking-wider block">
+                  1. Profile Photo / Avatar
+                </label>
+                
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="relative group shrink-0">
+                    <img
+                      src={profAvatar || MALE_AVATAR_PRESETS[0]}
+                      alt="Avatar Preview"
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-emerald-500 object-cover shadow-lg"
+                    />
+                    <label className="absolute inset-0 bg-slate-950/60 rounded-2xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer">
+                      <Camera className="w-6 h-6 text-emerald-400" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfAvatarUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="space-y-2 flex-1 w-full text-center sm:text-left">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <label className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl cursor-pointer font-bold text-xs transition">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload from Device</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfAvatarUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      
+                      <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setProfAvatarPresetGender('Male')}
+                          className={`px-2 py-1 rounded font-bold transition ${
+                            profAvatarPresetGender === 'Male' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Male Presets
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProfAvatarPresetGender('Female')}
+                          className={`px-2 py-1 rounded font-bold transition ${
+                            profAvatarPresetGender === 'Female' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Female Presets
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Presets Horizontal Row */}
+                    <div className="flex items-center justify-center sm:justify-start gap-2 overflow-x-auto pb-1 pt-1">
+                      {(profAvatarPresetGender === 'Female' ? FEMALE_AVATAR_PRESETS : MALE_AVATAR_PRESETS).map((presetUrl, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setProfAvatar(presetUrl)}
+                          className={`relative rounded-xl overflow-hidden border-2 transition shrink-0 ${
+                            profAvatar === presetUrl
+                              ? 'border-emerald-500 scale-105 shadow-md shadow-emerald-500/30'
+                              : 'border-slate-800 opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={presetUrl} alt="Preset" className="w-10 h-10 object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Details */}
+              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <label className="text-xs font-bold text-white uppercase tracking-wider block">
+                  2. Personal & Contact Details
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1">Gender</label>
+                    <select
+                      value={profGender}
+                      onChange={(e) => {
+                        setProfGender(e.target.value);
+                        if (e.target.value === 'Female') setProfAvatarPresetGender('Female');
+                        if (e.target.value === 'Male') setProfAvatarPresetGender('Male');
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={profBirthdate}
+                      onChange={(e) => setProfBirthdate(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1">WhatsApp / Phone</label>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
+                      <input
+                        type="tel"
+                        placeholder="+91 98765 43210"
+                        value={profPhone}
+                        onChange={(e) => setProfPhone(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-white focus:border-emerald-500 outline-none"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Physical Metrics */}
+              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <label className="text-xs font-bold text-white uppercase tracking-wider block">
+                  3. Height & Weight Metrics
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1">Height (cm)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 175"
+                      value={profHeight}
+                      onChange={(e) => setProfHeight(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:border-emerald-500 outline-none"
+                      required
+                      min={100}
+                      max={250}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1">Current Weight (kg)</label>
+                    <input
+                      type="number"
+                      step={0.1}
+                      placeholder="e.g. 78.5"
+                      value={profWeight}
+                      onChange={(e) => setProfWeight(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:border-emerald-500 outline-none"
+                      required
+                      min={30}
+                      max={250}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 font-semibold block mb-1">Target Weight (kg)</label>
+                    <input
+                      type="number"
+                      step={0.1}
+                      placeholder="e.g. 72.0"
+                      value={profTargetWeight}
+                      onChange={(e) => setProfTargetWeight(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Goals */}
+              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <label className="text-xs font-bold text-white uppercase tracking-wider block">
+                  4. Primary Fitness Goal & Notes for Coach Pushkar
+                </label>
+                
+                {/* Goal chips */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'Fat Loss & Toning',
+                    'Muscle Hypertrophy & Bulk',
+                    'Strength & Power',
+                    'Athletic Conditioning',
+                    'General Health & Mobility'
+                  ].map((goalOption) => {
+                    const isSelected = profGoal === goalOption;
+                    return (
+                      <button
+                        key={goalOption}
+                        type="button"
+                        onClick={() => setProfGoal(goalOption)}
+                        className={`px-3 py-1.5 rounded-xl border font-bold text-xs transition flex items-center space-x-1.5 ${
+                          isSelected
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <Target className="w-3.5 h-3.5" />
+                        <span>{goalOption}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-[11px] block mb-1 font-semibold">
+                    Specific Targets, Injuries, or Dietary Notes (Optional):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={profGoalNotes}
+                    onChange={(e) => setProfGoalNotes(e.target.value)}
+                    placeholder="e.g. Want to drop 5kg fat before June, left shoulder clicks on heavy bench, vegetarian diet..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-white placeholder-slate-500 focus:border-emerald-500 outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-extrabold shadow-lg shadow-emerald-500/25 transition disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {isSavingProfile ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>Saving Profile...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Save My Profile & Goals</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

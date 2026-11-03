@@ -135,21 +135,25 @@ class Database {
       occupation: clientData.occupation || '',
       emergencyContact: clientData.emergencyContact || '',
       startDate: clientData.startDate || new Date().toISOString().split('T')[0],
-      status: clientData.status || 'onboarding',
-      trainingType: clientData.trainingType || 'Hybrid Coaching',
+      status: clientData.status || (clientData.paymentStatus === 'paid' ? 'active' : 'onboarding'),
+      trainingMode: clientData.trainingMode || (clientData.trainingType?.toLowerCase().includes('online') ? 'online' : 'offline'),
+      trainingType: clientData.trainingType || (clientData.trainingMode === 'online' ? 'Online Coaching' : 'Offline Studio Coaching'),
+      trainingDays: clientData.trainingDays || (clientData.autoSchedule?.scheduleOption === 'TTS' ? ['Tuesday', 'Thursday', 'Saturday'] : ['Monday', 'Wednesday', 'Friday']),
+      sessionTime: clientData.sessionTime || clientData.autoSchedule?.time || '10:00 AM',
       trainingFrequency: clientData.trainingFrequency || '3x per week',
-      currentGoal: clientData.currentGoal || 'General Fitness',
-      goalsList: clientData.goalsList || ['General fitness'],
-      acquisitionSource: clientData.acquisitionSource || 'Website',
-      heightCm: Number(clientData.heightCm) || 170,
-      weightKg: Number(clientData.weightKg) || 70,
-      startingWeightKg: Number(clientData.startingWeightKg || clientData.weightKg) || 70,
-      targetWeightKg: Number(clientData.targetWeightKg) || 68,
+      currentGoal: clientData.currentGoal || '',
+      goalsList: clientData.goalsList || (clientData.currentGoal ? [clientData.currentGoal] : []),
+      acquisitionSource: clientData.acquisitionSource || 'Direct',
+      heightCm: clientData.heightCm ? Number(clientData.heightCm) : null,
+      weightKg: clientData.weightKg ? Number(clientData.weightKg) : null,
+      startingWeightKg: clientData.startingWeightKg ? Number(clientData.startingWeightKg) : (clientData.weightKg ? Number(clientData.weightKg) : null),
+      targetWeightKg: clientData.targetWeightKg ? Number(clientData.targetWeightKg) : null,
+      profileCompleted: !!(clientData.heightCm && clientData.weightKg && clientData.phone && clientData.dateOfBirth),
       trainingExperience: clientData.trainingExperience || 'Beginner',
       fitnessLevel: clientData.fitnessLevel || 'Beginner',
       injuries: clientData.injuries || 'None',
       restrictions: clientData.restrictions || 'None',
-      equipmentAvailability: clientData.equipmentAvailability || 'Gym',
+      equipmentAvailability: clientData.equipmentAvailability || (clientData.trainingMode === 'online' ? 'Home / Commercial Gym' : 'The Push Fitness Studio'),
       lifestyleLevel: clientData.lifestyleLevel || 'Moderate',
 
       dietaryPreference: clientData.dietaryPreference || 'Omnivore',
@@ -310,9 +314,13 @@ class Database {
     const existing = this.data.clients[idx];
     const merged = { ...existing, ...updates, id };
 
-    // Ensure numeric fields stay numeric when updated
     if (updates.heightCm !== undefined) merged.heightCm = Number(updates.heightCm) || 0;
-    if (updates.weightKg !== undefined) merged.weightKg = Number(updates.weightKg) || 0;
+    if (updates.weightKg !== undefined) {
+      merged.weightKg = Number(updates.weightKg) || 0;
+      if (!merged.startingWeightKg || merged.startingWeightKg === 0) {
+        merged.startingWeightKg = merged.weightKg;
+      }
+    }
     if (updates.startingWeightKg !== undefined) merged.startingWeightKg = Number(updates.startingWeightKg) || 0;
     if (updates.targetWeightKg !== undefined) merged.targetWeightKg = Number(updates.targetWeightKg) || 0;
     if (updates.dailyCalorieTarget !== undefined) merged.dailyCalorieTarget = Number(updates.dailyCalorieTarget) || 0;
@@ -321,11 +329,21 @@ class Database {
     if (updates.fatsTargetG !== undefined) merged.fatsTargetG = Number(updates.fatsTargetG) || 0;
     if (updates.waterTargetMl !== undefined) merged.waterTargetMl = Number(updates.waterTargetMl) || 0;
     if (updates.monthlyPrice !== undefined) merged.monthlyPrice = Number(updates.monthlyPrice) || 0;
+    if (updates.currentGoal !== undefined) {
+      merged.currentGoal = updates.currentGoal;
+      if (updates.currentGoal && (!merged.goalsList || merged.goalsList.length === 0)) {
+        merged.goalsList = [updates.currentGoal];
+      }
+    }
 
     if (updates.sessionsPurchased !== undefined || updates.sessionsCompleted !== undefined) {
       merged.sessionsPurchased = Number(merged.sessionsPurchased) || 0;
       merged.sessionsCompleted = Number(merged.sessionsCompleted) || 0;
       merged.sessionsRemaining = Math.max(0, merged.sessionsPurchased - merged.sessionsCompleted);
+    }
+
+    if (merged.heightCm && merged.weightKg && merged.phone && merged.dateOfBirth) {
+      merged.profileCompleted = true;
     }
 
     this.data.clients[idx] = merged;
