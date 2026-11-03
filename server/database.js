@@ -788,6 +788,7 @@ class Database {
 
     client.sessionsPurchased = (Number(client.sessionsPurchased) || 0) + sessionsToAdd;
     client.sessionsRemaining = Math.max(0, client.sessionsPurchased - (Number(client.sessionsCompleted) || 0));
+    client.monthlyPrice = amount;
     client.paymentStatus = 'paid';
     client.lastPaymentDate = paidDate;
     client.amountPaidToDate = (Number(client.amountPaidToDate) || 0) + amount;

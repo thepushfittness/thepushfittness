@@ -81,8 +81,9 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
   // Start Date
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Billing (Prepaid ₹18,000 for 12 sessions)
+  // Billing (Prepaid 18k / 15k / Custom for 12 sessions)
   const [monthlyPrice, setMonthlyPrice] = useState(18000);
+  const [isCustomPrice, setIsCustomPrice] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('UPI (GPay / PhonePe)');
   const [paymentReference, setPaymentReference] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -421,8 +422,8 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
             </div>
           </div>
 
-          {/* Row 5: Prepaid Package & Billing (Pre-filled ₹18,000 for 12 Sessions) */}
-          <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+          {/* Row 5: Prepaid Package & Billing (18k / 15k / Custom Amount) */}
+          <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
@@ -434,9 +435,89 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }) {
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-sm font-extrabold text-emerald-400">₹{Number(monthlyPrice).toLocaleString()}</span>
+                <span className="text-base font-extrabold text-emerald-400">
+                  ₹{Number(monthlyPrice || 0).toLocaleString()}
+                </span>
                 <span className="text-[10px] text-slate-400 block">/ 12 Sessions</span>
               </div>
+            </div>
+
+            {/* Pricing Tier Selector (18k / 15k / Custom) */}
+            <div className="space-y-1.5 pt-1 border-t border-emerald-500/20">
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 font-semibold block text-[11px]">
+                  Select Package Amount <span className="text-red-400">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400">Change rate per client</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMonthlyPrice(18000);
+                    setIsCustomPrice(false);
+                  }}
+                  className={`py-2 px-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center border ${
+                    !isCustomPrice && Number(monthlyPrice) === 18000
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/25 scale-[1.02]'
+                      : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <span className="font-extrabold text-sm">₹18,000</span>
+                  <span className={`text-[10px] font-semibold ${!isCustomPrice && Number(monthlyPrice) === 18000 ? 'text-slate-950' : 'text-slate-400'}`}>
+                    18k Tier
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMonthlyPrice(15000);
+                    setIsCustomPrice(false);
+                  }}
+                  className={`py-2 px-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center border ${
+                    !isCustomPrice && Number(monthlyPrice) === 15000
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/25 scale-[1.02]'
+                      : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <span className="font-extrabold text-sm">₹15,000</span>
+                  <span className={`text-[10px] font-semibold ${!isCustomPrice && Number(monthlyPrice) === 15000 ? 'text-slate-950' : 'text-slate-400'}`}>
+                    15k Tier
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCustomPrice(true)}
+                  className={`py-2 px-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center border ${
+                    isCustomPrice || (Number(monthlyPrice) !== 18000 && Number(monthlyPrice) !== 15000)
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/25 scale-[1.02]'
+                      : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <span className="font-extrabold text-sm">Custom</span>
+                  <span className={`text-[10px] font-semibold ${isCustomPrice || (Number(monthlyPrice) !== 18000 && Number(monthlyPrice) !== 15000) ? 'text-slate-950' : 'text-slate-400'}`}>
+                    Custom Amount
+                  </span>
+                </button>
+              </div>
+
+              {(isCustomPrice || (Number(monthlyPrice) !== 18000 && Number(monthlyPrice) !== 15000)) && (
+                <div className="relative mt-2">
+                  <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">₹</span>
+                  <input
+                    type="number"
+                    value={monthlyPrice}
+                    onChange={(e) => setMonthlyPrice(e.target.value)}
+                    placeholder="Enter custom package fee (e.g. 12000)"
+                    className="w-full bg-slate-950 border border-emerald-500 rounded-xl pl-7 pr-3 py-2 text-white font-extrabold text-xs outline-none focus:ring-1 focus:ring-emerald-400"
+                    required
+                    min="1000"
+                    step="500"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-emerald-500/20">

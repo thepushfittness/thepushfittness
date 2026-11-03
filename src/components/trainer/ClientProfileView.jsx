@@ -2043,11 +2043,38 @@ export function ClientProfileView({
             <form onSubmit={handleConfirmProfileRenew} className="mt-4 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-400 font-semibold block mb-1">Package Fee (₹)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-400 font-semibold block">Package Fee (₹)</label>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        type="button"
+                        onClick={() => setProfileRenewAmount(18000)}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                          Number(profileRenewAmount) === 18000
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        18k
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProfileRenewAmount(15000)}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                          Number(profileRenewAmount) === 15000
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        15k
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type="number"
                     value={profileRenewAmount}
                     onChange={(e) => setProfileRenewAmount(e.target.value)}
+                    placeholder="Package Fee in ₹"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm"
                     required
                   />

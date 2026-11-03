@@ -697,11 +697,38 @@ export function EditClientModal({ isOpen, onClose, client, initialStep = 1, onCl
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 font-semibold block mb-1">Monthly Price (₹)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-400 font-semibold block">Monthly Price (₹)</label>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, monthlyPrice: 18000 })}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                          Number(formData.monthlyPrice) === 18000
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        18k
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, monthlyPrice: 15000 })}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                          Number(formData.monthlyPrice) === 15000
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        15k
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type="number"
                     value={formData.monthlyPrice}
                     onChange={(e) => setFormData({ ...formData, monthlyPrice: Number(e.target.value) })}
+                    placeholder="e.g. 18000"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-emerald-400 font-bold focus:border-emerald-500 outline-none"
                   />
                 </div>
