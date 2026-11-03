@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { QuickConditioningModal } from './QuickConditioningModal';
@@ -19,8 +19,9 @@ import {
   FileCheck,
   Flame,
   Zap,
-  CheckCircle2,
-  FileText
+  FileText,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 
 export function WorkoutManager({ onSelectClient }) {
@@ -29,6 +30,11 @@ export function WorkoutManager({ onSelectClient }) {
   const [clients, setClients] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Modal scroll ref and delete confirmation
+  const modalScrollRef = useRef(null);
+  const [programToDelete, setProgramToDelete] = useState(null);
+  const [isDeletingProgram, setIsDeletingProgram] = useState(false);
 
   // Quick Conditioning Modal state
   const [showConditioningModal, setShowConditioningModal] = useState(false);
@@ -99,6 +105,12 @@ export function WorkoutManager({ onSelectClient }) {
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => {
+    if (showCreateModal && modalScrollRef.current) {
+      modalScrollRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [showCreateModal]);
 
   const createFreshDay = (num = 1) => ({
     id: `d-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -331,13 +343,18 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
     setShowCreateModal(true);
   };
 
-  const handleDeleteProgram = async (progId, progName) => {
+  const handleConfirmDeleteProgram = async () => {
+    if (!programToDelete) return;
     try {
-      await api.deleteProgram(progId);
-      setPrograms(prev => prev.filter(p => p.id !== progId));
-      showToast(`Deleted program "${progName}"`);
+      setIsDeletingProgram(true);
+      await api.deleteProgram(programToDelete.id);
+      setPrograms(prev => prev.filter(p => p.id !== programToDelete.id));
+      showToast(`Deleted program "${programToDelete.name}" successfully.`);
+      setProgramToDelete(null);
     } catch (err) {
       showToast('Failed to delete program', 'error');
+    } finally {
+      setIsDeletingProgram(false);
     }
   };
 
@@ -522,15 +539,21 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {programs.map((prog) => {
               const assignedClient = clients.find(c => c.id === prog.clientId);
+              const clientProgramCount = prog.clientId ? programs.filter(p => p.clientId === prog.clientId).length : 0;
               return (
                 <div key={prog.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                         <h3 className="font-bold text-base text-white">{prog.name}</h3>
                         <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
                           {prog.status}
                         </span>
+                        {clientProgramCount > 1 && (
+                          <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full" title="Multiple plans assigned to this client">
+                            Multi-Plan ({clientProgramCount})
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
                         Assigned to: <strong className="text-emerald-400">{assignedClient ? assignedClient.name : 'Unassigned'}</strong> • {prog.daysPerWeek} Days/Week
@@ -564,9 +587,9 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
                         <Copy className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDeleteProgram(prog.id, prog.name)}
+                        onClick={() => setProgramToDelete({ ...prog, assignedClientName: assignedClient ? assignedClient.name : 'Unassigned' })}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-950/60 text-slate-400 hover:text-red-400 transition"
-                        title="Delete Program"
+                        title="Delete Program (Removes duplicate or unneeded plan)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -621,7 +644,7 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
 
       {/* CREATE / EDIT PROGRAM MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-start">
+        <div ref={modalScrollRef} className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-start">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-3xl w-full shadow-2xl my-4 sm:my-8 space-y-6">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
@@ -1337,6 +1360,58 @@ Finisher: 10-Min EMOM - Min 1: 15 KB Swings (24kg), Min 2: 12 Burpees`
           loadAll();
         }}
       />
+
+      {/* DELETE WORKOUT PLAN CONFIRMATION MODAL */}
+      {programToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-red-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 text-red-400">
+              <div className="p-2.5 bg-red-500/10 rounded-xl border border-red-500/30">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Workout Program?</h3>
+                <p className="text-xs text-slate-400">Remove duplicate or unneeded program</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5 text-xs text-slate-300">
+              <p>• Program: <strong className="text-red-400">{programToDelete.name}</strong></p>
+              <p>• Assigned Client: <strong className="text-white">{programToDelete.assignedClientName || 'Unassigned'}</strong></p>
+              <p>• Days: <strong>{programToDelete.days?.length || 0} Workout Days</strong></p>
+              <p className="text-[11px] text-amber-400/90 pt-1">
+                ⚠️ If this program was added twice to the client by accident, confirming will delete this duplicate copy permanently.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setProgramToDelete(null)}
+                disabled={isDeletingProgram}
+                className="px-4 py-2 bg-slate-800 text-slate-300 font-semibold rounded-xl hover:bg-slate-750 transition text-xs"
+              >
+                Cancel / Keep
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteProgram}
+                disabled={isDeletingProgram}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-600/30 transition text-xs flex items-center space-x-1.5 disabled:opacity-50"
+              >
+                {isDeletingProgram ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete Program</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

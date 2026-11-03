@@ -271,9 +271,10 @@ export function ClientApp() {
       setNotes(notesData || []);
 
       if (programsData && programsData.length > 0) {
-        setProgram(programsData[0]);
+        const activeProg = programsData.find(p => p.status === 'active') || programsData[0];
+        setProgram(activeProg);
         // Initialize sets log structure
-        const firstDay = programsData[0].days?.[0];
+        const firstDay = activeProg.days?.[0];
         if (firstDay) {
           const initSets = {};
           firstDay.exercises?.forEach(ex => {

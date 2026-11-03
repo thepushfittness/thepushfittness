@@ -4,6 +4,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { EditClientModal } from './EditClientModal';
 import { EditSessionModal } from './EditSessionModal';
 import { QuickConditioningModal } from './QuickConditioningModal';
+import { ChangeWorkoutPlanModal } from './ChangeWorkoutPlanModal';
 import { 
   User, 
   ArrowLeft, 
@@ -30,7 +31,8 @@ import {
   Share2,
   Trash2,
   ExternalLink,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -211,6 +213,52 @@ export function ClientProfileView({
       showToast(err.message || 'Failed to delete payment', 'error');
     } finally {
       setIsProfileDeletingPayment(false);
+    }
+  };
+
+  // Change / Edit / Delete Workout Plan in Profile View
+  const [showChangePlanModal, setShowChangePlanModal] = useState(false);
+  const [selectedProgramForChange, setSelectedProgramForChange] = useState(null);
+  const [changePlanInitialMode, setChangePlanInitialMode] = useState('switch');
+  const [programToDelete, setProgramToDelete] = useState(null);
+  const [isDeletingProgram, setIsDeletingProgram] = useState(false);
+
+  const handleOpenChangePlan = (prog, mode = 'switch') => {
+    setSelectedProgramForChange(prog);
+    setChangePlanInitialMode(mode);
+    setShowChangePlanModal(true);
+  };
+
+  const handleOpenAssignNewPlan = () => {
+    setSelectedProgramForChange(null);
+    setChangePlanInitialMode('switch');
+    setShowChangePlanModal(true);
+  };
+
+  const handleConfirmDeleteProgram = async () => {
+    if (!programToDelete) return;
+    try {
+      setIsDeletingProgram(true);
+      await api.deleteProgram(programToDelete.id);
+      showToast(`Workout plan "${programToDelete.name}" deleted successfully.`);
+      setProgramToDelete(null);
+      loadClientData();
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || 'Failed to delete workout plan', 'error');
+    } finally {
+      setIsDeletingProgram(false);
+    }
+  };
+
+  const handleToggleProgramStatus = async (prog) => {
+    try {
+      const newStatus = prog.status === 'active' ? 'completed' : 'active';
+      await api.updateProgram(prog.id, { status: newStatus });
+      showToast(`Program "${prog.name}" marked as ${newStatus}!`);
+      loadClientData();
+    } catch (err) {
+      showToast('Failed to update program status', 'error');
     }
   };
 
@@ -868,7 +916,7 @@ export function ClientProfileView({
               <p className="text-xs text-slate-400">Programs currently prescribed for {client.name}</p>
             </div>
             <button
-              onClick={() => onOpenProgram(client.id)}
+              onClick={handleOpenAssignNewPlan}
               className="flex items-center space-x-1.5 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm"
             >
               <Plus className="w-4 h-4" />
@@ -876,13 +924,32 @@ export function ClientProfileView({
             </button>
           </div>
 
+          {/* Multiple Plans / Duplicate Warning Banner */}
+          {programs.length > 1 && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-xs">
+                    Multiple Workout Plans Assigned ({programs.length} Plans)
+                  </h4>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    If a workout plan was added twice by mistake, you can remove the duplicate plan using the <strong className="text-red-400">Delete Plan</strong> button below.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {programs.length === 0 ? (
             <div className="p-12 text-center bg-slate-900 rounded-2xl border border-slate-800">
               <Dumbbell className="w-12 h-12 text-slate-600 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-300">No workout program assigned yet</p>
               <p className="text-xs text-slate-500 mt-1">Assign an existing template or create a custom periodized program.</p>
               <button
-                onClick={() => onOpenProgram(client.id)}
+                onClick={handleOpenAssignNewPlan}
                 className="mt-4 px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl"
               >
                 Assign Program Now
@@ -891,20 +958,36 @@ export function ClientProfileView({
           ) : (
             programs.map((prog) => (
               <div key={prog.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                   <div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                       <h3 className="text-lg font-bold text-white">{prog.name}</h3>
-                      <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        {prog.status}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleProgramStatus(prog)}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition ${
+                          prog.status === 'active'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                        }`}
+                        title="Click to toggle Active / Completed"
+                      >
+                        {prog.status === 'active' ? '● Active Plan' : '○ Completed / Archived'}
+                      </button>
+                      {programs.length > 1 && prog.status !== 'active' && (
+                        <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                          Inactive / Duplicate
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Goal: {prog.goal} • {prog.durationWeeks} Weeks • {prog.daysPerWeek}x weekly frequency
+                      Goal: {prog.goal} • {prog.durationWeeks} Weeks • {prog.daysPerWeek}x weekly frequency • Cycle: {prog.startDate} to {prog.endDate}
                     </p>
                   </div>
-                  <div className="flex items-center space-x-2">
+
+                  <div className="flex items-center flex-wrap gap-2">
                     <button
+                      type="button"
                       onClick={() => {
                         setConditioningProgram(prog);
                         setShowConditioningModal(true);
@@ -913,11 +996,38 @@ export function ClientProfileView({
                       title="Quick update today's conditioning routine"
                     >
                       <Flame className="w-3.5 h-3.5 text-amber-400" />
-                      <span>⚡ Update Today's Conditioning</span>
+                      <span>Conditioning</span>
                     </button>
-                    <span className="text-xs text-slate-400">
-                      Cycle: {prog.startDate} to {prog.endDate}
-                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenChangePlan(prog, 'edit')}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition"
+                      title="Edit this plan's exercises, sets, and weights directly"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Edit Plan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenChangePlan(prog, 'switch')}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-xl transition"
+                      title="Change or replace this workout plan with a pre-built template"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Change Plan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setProgramToDelete(prog)}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold rounded-xl transition"
+                      title="Delete duplicate or unwanted workout plan"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Plan</span>
+                    </button>
                   </div>
                 </div>
 
@@ -2485,6 +2595,79 @@ export function ClientProfileView({
                   <>
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Yes, Delete Payment</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHANGE / EDIT WORKOUT PLAN MODAL */}
+      {showChangePlanModal && (
+        <ChangeWorkoutPlanModal
+          isOpen={showChangePlanModal}
+          program={selectedProgramForChange}
+          client={client}
+          initialMode={changePlanInitialMode}
+          onClose={() => {
+            setShowChangePlanModal(false);
+            setSelectedProgramForChange(null);
+          }}
+          onSuccess={() => {
+            loadClientData();
+          }}
+          onDelete={() => {
+            loadClientData();
+          }}
+        />
+      )}
+
+      {/* DELETE WORKOUT PLAN CONFIRMATION MODAL */}
+      {programToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-red-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 text-red-400">
+              <div className="p-2.5 bg-red-500/10 rounded-xl border border-red-500/30">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Workout Plan?</h3>
+                <p className="text-xs text-slate-400">Remove duplicate or unwanted program</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5 text-xs text-slate-300">
+              <p>• Client: <strong className="text-white">{client?.name}</strong></p>
+              <p>• Program Name: <strong className="text-red-400">{programToDelete.name}</strong></p>
+              <p>• Duration & Frequency: <strong>{programToDelete.durationWeeks} Weeks • {programToDelete.daysPerWeek}x/wk</strong></p>
+              <p>• Workout Days: <strong>{programToDelete.days?.length || 0} Days</strong></p>
+              <p className="text-[11px] text-amber-400/90 pt-1">
+                ⚠️ If this workout plan was added twice by mistake, confirming will permanently delete this duplicate copy without affecting other data.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setProgramToDelete(null)}
+                disabled={isDeletingProgram}
+                className="px-4 py-2 bg-slate-800 text-slate-300 font-semibold rounded-xl hover:bg-slate-750 transition text-xs"
+              >
+                Cancel / Keep Plan
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteProgram}
+                disabled={isDeletingProgram}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-600/30 transition text-xs flex items-center space-x-1.5 disabled:opacity-50"
+              >
+                {isDeletingProgram ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete Workout Plan</span>
                   </>
                 )}
               </button>
