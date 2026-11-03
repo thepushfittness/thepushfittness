@@ -471,6 +471,12 @@ app.put('/api/payments/:id', authenticateToken, requireTrainer, (req, res) => {
   res.json(updated);
 });
 
+app.delete('/api/payments/:id', authenticateToken, requireTrainer, (req, res) => {
+  const success = db.deletePayment(req.params.id);
+  if (!success) return res.status(404).json({ error: 'Payment not found' });
+  res.json({ success: true, message: 'Payment deleted successfully' });
+});
+
 // --- Measurements & Progress ---
 
 app.get('/api/measurements', authenticateToken, (req, res) => {

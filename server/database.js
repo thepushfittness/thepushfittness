@@ -876,26 +876,82 @@ class Database {
     const idx = this.data.payments.findIndex(p => p.id === id);
     if (idx === -1) return null;
     const oldPayment = this.data.payments[idx];
-    const updated = { ...oldPayment, ...updates, id };
+
+    const newAmount = updates.amount !== undefined ? Number(updates.amount) : Number(oldPayment.amount);
+    const oldAmount = Number(oldPayment.amount) || 0;
+
+    const updated = {
+      ...oldPayment,
+      ...updates,
+      amount: newAmount,
+      id
+    };
     this.data.payments[idx] = updated;
 
     const client = this.getClientById(updated.clientId);
-    if (client && updates.status === 'paid' && oldPayment.status !== 'paid') {
-      client.paymentStatus = 'paid';
-      client.lastPaymentDate = updated.paidDate || new Date().toISOString().split('T')[0];
-      client.amountPaidToDate = (client.amountPaidToDate || 0) + Number(updated.amount);
-      client.lifetimeRevenue = (client.lifetimeRevenue || 0) + Number(updated.amount);
-      
+    if (client) {
+      const oldPaid = oldPayment.status === 'paid';
+      const newPaid = updated.status === 'paid';
+
+      if (oldPaid && newPaid) {
+        // Price / amount changed while both paid
+        const diff = newAmount - oldAmount;
+        if (diff !== 0) {
+          client.amountPaidToDate = Math.max(0, (Number(client.amountPaidToDate) || 0) + diff);
+          client.lifetimeRevenue = Math.max(0, (Number(client.lifetimeRevenue) || 0) + diff);
+        }
+      } else if (!oldPaid && newPaid) {
+        // Transitioned from due/overdue to paid
+        client.paymentStatus = 'paid';
+        client.lastPaymentDate = updated.paidDate || new Date().toISOString().split('T')[0];
+        client.amountPaidToDate = (Number(client.amountPaidToDate) || 0) + newAmount;
+        client.lifetimeRevenue = (Number(client.lifetimeRevenue) || 0) + newAmount;
+      } else if (oldPaid && !newPaid) {
+        // Transitioned from paid back to due/overdue
+        client.paymentStatus = updated.status;
+        client.amountPaidToDate = Math.max(0, (Number(client.amountPaidToDate) || 0) - oldAmount);
+        client.lifetimeRevenue = Math.max(0, (Number(client.lifetimeRevenue) || 0) - oldAmount);
+      }
+
+      // Sync monthlyPrice if requested or updated
+      if (updates.updateMonthlyPrice || updates.amount) {
+        client.monthlyPrice = newAmount;
+      }
+
       this.addTimelineEvent(
         client.id,
-        'payment_received',
-        'Payment Succeeded',
-        `Marked invoice ₹${Number(updated.amount).toLocaleString()} as Paid.`
+        'payment_updated',
+        'Payment Record Updated',
+        `Updated invoice: ₹${newAmount.toLocaleString()} (${updated.status.toUpperCase()}).`
       );
     }
 
     this.save();
     return updated;
+  }
+
+  deletePayment(id) {
+    const idx = this.data.payments.findIndex(p => p.id === id);
+    if (idx === -1) return false;
+    const payment = this.data.payments[idx];
+
+    const client = this.getClientById(payment.clientId);
+    if (client && payment.status === 'paid') {
+      const amt = Number(payment.amount) || 0;
+      client.amountPaidToDate = Math.max(0, (Number(client.amountPaidToDate) || 0) - amt);
+      client.lifetimeRevenue = Math.max(0, (Number(client.lifetimeRevenue) || 0) - amt);
+
+      this.addTimelineEvent(
+        client.id,
+        'payment_deleted',
+        'Payment Removed',
+        `Deleted payment record of ₹${amt.toLocaleString()} (${payment.referenceId || payment.planName}).`
+      );
+    }
+
+    this.data.payments.splice(idx, 1);
+    this.save();
+    return true;
   }
 
   // --- Measurements & Progress ---

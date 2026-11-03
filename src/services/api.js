@@ -183,6 +183,7 @@ export const api = {
   },
   createPayment: (paymentData) => request('/payments', { method: 'POST', body: paymentData }),
   updatePayment: (id, updates) => request(`/payments/${id}`, { method: 'PUT', body: updates }),
+  deletePayment: (id) => request(`/payments/${id}`, { method: 'DELETE' }),
 
   // Measurements & Progress
   getMeasurements: (clientId) => request(`/measurements?clientId=${clientId}`),

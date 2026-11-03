@@ -29,7 +29,8 @@ import {
   Download,
   Share2,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -138,6 +139,78 @@ export function ClientProfileView({
       showToast(err.message || 'Failed to renew package', 'error');
     } finally {
       setIsProfileRenewing(false);
+    }
+  };
+
+  // Edit & Delete Payment in Profile View
+  const [showProfileEditPaymentModal, setShowProfileEditPaymentModal] = useState(false);
+  const [profileEditingPayment, setProfileEditingPayment] = useState(null);
+  const [profileEditPlanName, setProfileEditPlanName] = useState('');
+  const [profileEditAmount, setProfileEditAmount] = useState(18000);
+  const [profileEditStatus, setProfileEditStatus] = useState('paid');
+  const [profileEditMethod, setProfileEditMethod] = useState('UPI (GPay / PhonePe)');
+  const [profileEditDueDate, setProfileEditDueDate] = useState('');
+  const [profileEditPaidDate, setProfileEditPaidDate] = useState('');
+  const [profileEditReferenceId, setProfileEditReferenceId] = useState('');
+  const [profileEditNotes, setProfileEditNotes] = useState('');
+  const [profileEditUpdateClientPrice, setProfileEditUpdateClientPrice] = useState(true);
+  const [isProfileSavingPayment, setIsProfileSavingPayment] = useState(false);
+
+  const [profilePaymentToDelete, setProfilePaymentToDelete] = useState(null);
+  const [isProfileDeletingPayment, setIsProfileDeletingPayment] = useState(false);
+
+  const handleOpenProfileEditPayment = (p) => {
+    setProfileEditingPayment(p);
+    setProfileEditPlanName(p.planName || 'Personal Coaching Package (12 Sessions)');
+    setProfileEditAmount(Number(p.amount) || 18000);
+    setProfileEditStatus(p.status || 'paid');
+    setProfileEditMethod(p.paymentMethod || 'UPI (GPay / PhonePe)');
+    setProfileEditDueDate(p.dueDate || '');
+    setProfileEditPaidDate(p.paidDate || new Date().toISOString().split('T')[0]);
+    setProfileEditReferenceId(p.referenceId || '');
+    setProfileEditNotes(p.notes || '');
+    setProfileEditUpdateClientPrice(true);
+    setShowProfileEditPaymentModal(true);
+  };
+
+  const handleSaveProfileEditPayment = async (e) => {
+    e.preventDefault();
+    if (!profileEditingPayment) return;
+    try {
+      setIsProfileSavingPayment(true);
+      await api.updatePayment(profileEditingPayment.id, {
+        planName: profileEditPlanName.trim(),
+        amount: Number(profileEditAmount),
+        status: profileEditStatus,
+        paymentMethod: profileEditMethod,
+        dueDate: profileEditDueDate,
+        paidDate: profileEditStatus === 'paid' ? profileEditPaidDate : null,
+        referenceId: profileEditReferenceId.trim(),
+        notes: profileEditNotes.trim(),
+        updateMonthlyPrice: profileEditUpdateClientPrice
+      });
+      showToast('Payment record and price updated successfully!');
+      setShowProfileEditPaymentModal(false);
+      loadClientData();
+    } catch (err) {
+      showToast(err.message || 'Failed to update payment record', 'error');
+    } finally {
+      setIsProfileSavingPayment(false);
+    }
+  };
+
+  const confirmProfileDeletePayment = async () => {
+    if (!profilePaymentToDelete) return;
+    try {
+      setIsProfileDeletingPayment(true);
+      await api.deletePayment(profilePaymentToDelete.id);
+      showToast('Payment record deleted successfully.');
+      setProfilePaymentToDelete(null);
+      loadClientData();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete payment', 'error');
+    } finally {
+      setIsProfileDeletingPayment(false);
     }
   };
 
@@ -1313,13 +1386,14 @@ export function ClientProfileView({
                     <th className="py-3 px-4">Paid Date</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Reference ID</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {payments.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-800/50">
                       <td className="py-3 px-4 font-semibold text-white">{p.planName}</td>
-                      <td className="py-3 px-4 font-bold text-emerald-400">₹{p.amount}</td>
+                      <td className="py-3 px-4 font-bold text-emerald-400">₹{Number(p.amount).toLocaleString()}</td>
                       <td className="py-3 px-4 text-slate-400">{p.dueDate}</td>
                       <td className="py-3 px-4 text-slate-300">{p.paidDate || 'Pending'}</td>
                       <td className="py-3 px-4">
@@ -1330,6 +1404,26 @@ export function ClientProfileView({
                         </span>
                       </td>
                       <td className="py-3 px-4 font-mono text-[11px] text-slate-400">{p.referenceId}</td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenProfileEditPayment(p)}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-blue-400 hover:text-blue-300 border border-slate-700 transition"
+                            title="Edit payment price / details"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setProfilePaymentToDelete(p)}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-950/60 text-slate-400 hover:text-red-400 border border-slate-700 hover:border-red-500/40 transition"
+                            title="Delete double / duplicate payment"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2156,6 +2250,245 @@ export function ClientProfileView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Payment Modal (Profile View) */}
+      {showProfileEditPaymentModal && profileEditingPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Edit3 className="w-4 h-4 text-blue-400" />
+                  <span>Edit Payment Record</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Client: <strong className="text-white">{client.name}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileEditPaymentModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfileEditPayment} className="space-y-3.5 text-xs">
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Plan / Package Title</label>
+                <input
+                  type="text"
+                  value={profileEditPlanName}
+                  onChange={(e) => setProfileEditPlanName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+
+              {/* Amount with 18k, 15k and Custom buttons */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-slate-300 font-semibold block">
+                    Payment Value / Price (₹) <span className="text-red-400">*</span>
+                  </label>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => setProfileEditAmount(18000)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                        Number(profileEditAmount) === 18000
+                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      }`}
+                    >
+                      18k
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProfileEditAmount(15000)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                        Number(profileEditAmount) === 15000
+                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      }`}
+                    >
+                      15k
+                    </button>
+                  </div>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-slate-400 font-bold">₹</span>
+                  <input
+                    type="number"
+                    value={profileEditAmount}
+                    onChange={(e) => setProfileEditAmount(e.target.value)}
+                    placeholder="Enter price in ₹"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-7 pr-3 py-2 text-emerald-400 font-extrabold text-sm outline-none focus:border-emerald-500"
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Status</label>
+                  <select
+                    value={profileEditStatus}
+                    onChange={(e) => setProfileEditStatus(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
+                  >
+                    <option value="paid">Paid (Settled)</option>
+                    <option value="due">Due Soon</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Payment Method</label>
+                  <select
+                    value={profileEditMethod}
+                    onChange={(e) => setProfileEditMethod(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
+                  >
+                    <option value="UPI (GPay / PhonePe)">UPI (GPay / PhonePe / Paytm)</option>
+                    <option value="Bank Transfer">Bank Transfer (NEFT / IMPS)</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Credit / Debit Card">Credit / Debit Card</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={profileEditDueDate}
+                    onChange={(e) => setProfileEditDueDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">Paid Date</label>
+                  <input
+                    type="date"
+                    value={profileEditPaidDate}
+                    onChange={(e) => setProfileEditPaidDate(e.target.value)}
+                    disabled={profileEditStatus !== 'paid'}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500 disabled:opacity-40"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">UPI Ref / Transaction ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. GPay UPI Ref # / Bank UTR"
+                  value={profileEditReferenceId}
+                  onChange={(e) => setProfileEditReferenceId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Internal Note (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Adjusted rate as discussed with client"
+                  value={profileEditNotes}
+                  onChange={(e) => setProfileEditNotes(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <label className="flex items-center space-x-2 p-2.5 bg-slate-950/60 rounded-xl border border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={profileEditUpdateClientPrice}
+                  onChange={(e) => setProfileEditUpdateClientPrice(e.target.checked)}
+                  className="rounded text-emerald-500 focus:ring-0 bg-slate-900 border-slate-700"
+                />
+                <span className="text-slate-300 text-[11px]">
+                  Also update client's ongoing monthly package rate to ₹{Number(profileEditAmount || 0).toLocaleString()}
+                </span>
+              </label>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileEditPaymentModal(false)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-semibold rounded-xl hover:bg-slate-750 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProfileSavingPayment}
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition disabled:opacity-50"
+                >
+                  {isProfileSavingPayment ? 'Saving...' : 'Update Payment Record'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Payment Confirmation Modal (Profile View) */}
+      {profilePaymentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-slate-900 border border-red-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 text-red-400">
+              <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Duplicate / Double Payment</h3>
+                <p className="text-xs text-slate-400">This action will remove the payment record</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5 text-xs text-slate-300">
+              <p>• Client: <strong className="text-white">{client.name}</strong></p>
+              <p>• Plan: <strong>{profilePaymentToDelete.planName}</strong></p>
+              <p>• Amount: <strong className="text-red-400">₹{Number(profilePaymentToDelete.amount).toLocaleString()}</strong></p>
+              <p>• Date: <strong>{profilePaymentToDelete.paidDate || profilePaymentToDelete.dueDate}</strong></p>
+              <p className="text-[11px] text-amber-400/90 pt-1">
+                ⚠️ If this payment was marked Paid, client's total lifetime revenue will automatically be adjusted.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setProfilePaymentToDelete(null)}
+                disabled={isProfileDeletingPayment}
+                className="px-4 py-2 bg-slate-800 text-slate-300 font-semibold rounded-xl hover:bg-slate-750 transition text-xs"
+              >
+                Keep Payment
+              </button>
+              <button
+                type="button"
+                onClick={confirmProfileDeletePayment}
+                disabled={isProfileDeletingPayment}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-600/30 transition text-xs flex items-center space-x-1.5 disabled:opacity-50"
+              >
+                {isProfileDeletingPayment ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete Payment</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
