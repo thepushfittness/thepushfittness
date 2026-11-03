@@ -37,8 +37,11 @@ import {
   User,
   Edit3,
   Phone,
-  Target
+  Target,
+  Eye,
+  Trophy
 } from 'lucide-react';
+import { CompletedWorkoutViewModal } from '../common/CompletedWorkoutViewModal';
 import { 
   LineChart, 
   Line, 
@@ -142,6 +145,9 @@ export function ClientApp() {
   const [newPhotoNotes, setNewPhotoNotes] = useState('');
   const [newPhotoConsent, setNewPhotoConsent] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Completed workout modal viewer state
+  const [viewingWorkoutSession, setViewingWorkoutSession] = useState(null);
 
   // Comprehensive Client Profile Completion & Edit Modal State
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -1089,6 +1095,53 @@ export function ClientApp() {
               <p className="text-xs text-slate-400">No workout assigned today. Ask Coach Pushkar in the chat!</p>
             </div>
           )}
+
+          {/* Past Completed Session Workouts Logged with Coach Pushkar */}
+          {sessions.some(s => s.status === 'completed' && s.workoutDone) && (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center space-x-2">
+                  <Trophy className="w-4 h-4 text-emerald-400" />
+                  <h3 className="font-bold text-sm text-white">Coach Pushkar Session Workouts</h3>
+                </div>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  {sessions.filter(s => s.status === 'completed' && s.workoutDone).length} logged
+                </span>
+              </div>
+              <div className="space-y-2">
+                {sessions
+                  .filter(s => s.status === 'completed' && s.workoutDone)
+                  .map(s => (
+                    <div
+                      key={s.id}
+                      className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between hover:border-emerald-500/40 transition group"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-xs text-white">
+                            {s.workoutDone.dayName || s.workoutDone.workoutName || 'Completed Session'}
+                          </span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-semibold">
+                            {s.workoutDone.exercises?.length || 0} exercises
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          {s.date} • {s.time} • Volume: <strong className="text-slate-200">{(s.workoutDone.totalVolumeKg || 0).toLocaleString()} kg</strong>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setViewingWorkoutSession(s)}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-slate-300 font-bold rounded-xl text-xs transition flex items-center space-x-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View</span>
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1401,22 +1454,98 @@ export function ClientApp() {
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
-            <h3 className="font-bold text-sm text-white">Upcoming & Past Appointments</h3>
-            <div className="space-y-2">
-              {sessions.map(sess => (
-                <div key={sess.id} className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-                  <div>
-                    <span className="font-bold text-white block">{sess.sessionType}</span>
-                    <span className="text-slate-400 text-[11px]">{sess.date} at {sess.time} • {sess.location}</span>
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-sm text-white flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-emerald-400" />
+                <span>Upcoming & Completed Sessions</span>
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                {sessions.filter(s => s.status === 'completed').length} completed • {sessions.filter(s => s.status === 'scheduled').length} upcoming
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {sessions.length === 0 ? (
+                <p className="text-xs text-slate-500 py-4 text-center">No sessions booked yet.</p>
+              ) : (
+                sessions.map(sess => (
+                  <div 
+                    key={sess.id} 
+                    className={`p-4 rounded-2xl border transition ${
+                      sess.status === 'completed'
+                        ? 'bg-slate-950/80 border-slate-800'
+                        : 'bg-slate-950 border-cyan-500/30'
+                    } space-y-2.5`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-white text-xs">{sess.sessionType}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            sess.status === 'completed' 
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
+                              : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                          }`}>
+                            {sess.status === 'completed' ? '✓ Completed' : 'Scheduled'}
+                          </span>
+                        </div>
+                        <span className="text-slate-400 text-[11px] mt-1 block">
+                          📅 {sess.date} at {sess.time} • 📍 {sess.location}
+                        </span>
+                      </div>
+
+                      {sess.workoutDone && (
+                        <button
+                          type="button"
+                          onClick={() => setViewingWorkoutSession(sess)}
+                          className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                        >
+                          <Dumbbell className="w-3.5 h-3.5" />
+                          <span>View Workout</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Workout Done summary banner if available */}
+                    {sess.workoutDone && (
+                      <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center space-x-2">
+                          <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400">
+                            <Trophy className="w-3.5 h-3.5" />
+                          </span>
+                          <span className="font-bold text-white">
+                            {sess.workoutDone.dayName || sess.workoutDone.workoutName || 'Routine'}
+                          </span>
+                          {sess.workoutDone.programName && (
+                            <span className="text-[10px] text-slate-500 hidden sm:inline">
+                              ({sess.workoutDone.programName})
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3 text-[11px] text-slate-300">
+                          <span>{sess.workoutDone.exercises?.length || 0} exercises</span>
+                          <span>•</span>
+                          <span>Volume: <strong className="text-emerald-400">{(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg</strong></span>
+                          {sess.workoutDone.rpe && (
+                            <>
+                              <span>•</span>
+                              <span className="text-cyan-400 font-bold">RPE {sess.workoutDone.rpe}/10</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Coach Notes if logged */}
+                    {sess.notes && (
+                      <p className="text-[11px] text-slate-400 italic bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/40">
+                        💬 Coach Note: "{sess.notes}"
+                      </p>
+                    )}
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    sess.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-cyan-500/20 text-cyan-400'
-                  }`}>
-                    {sess.status}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -2131,6 +2260,17 @@ export function ClientApp() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* COMPLETED WORKOUT DETAIL MODAL */}
+      {viewingWorkoutSession && (
+        <CompletedWorkoutViewModal
+          isOpen={!!viewingWorkoutSession}
+          session={viewingWorkoutSession}
+          clientName={client?.name}
+          isTrainer={false}
+          onClose={() => setViewingWorkoutSession(null)}
+        />
       )}
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}

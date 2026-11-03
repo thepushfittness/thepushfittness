@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { EditSessionModal } from './EditSessionModal';
+import { SessionWorkoutLoggerModal } from './SessionWorkoutLoggerModal';
+import { CompletedWorkoutViewModal } from '../common/CompletedWorkoutViewModal';
 import { 
   Calendar as CalendarIcon, 
   Plus, 
@@ -12,14 +14,16 @@ import {
   MapPin, 
   User, 
   ChevronLeft, 
-  ChevronRight,
-  Filter,
-  Pencil,
-  Trash2,
-  Search,
-  AlertTriangle,
-  Sparkles,
-  Check
+  ChevronRight, 
+  Filter, 
+  Pencil, 
+  Trash2, 
+  Search, 
+  AlertTriangle, 
+  Sparkles, 
+  Check,
+  Dumbbell,
+  Edit3
 } from 'lucide-react';
 
 const COMMON_TIMES = [
@@ -40,6 +44,8 @@ export function SessionCalendar({ onSelectClient }) {
   const [editingSession, setEditingSession] = useState(null);
   const [deletingSession, setDeletingSession] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sessionForWorkoutLogging, setSessionForWorkoutLogging] = useState(null);
+  const [sessionForWorkoutView, setSessionForWorkoutView] = useState(null);
 
   // Booking modal
   const [showBookModal, setShowBookModal] = useState(false);
@@ -443,52 +449,101 @@ export function SessionCalendar({ onSelectClient }) {
                 </div>
 
                 {/* Footer Action Buttons */}
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs gap-2">
+                <div className="pt-3 border-t border-slate-800 space-y-2 text-xs">
                   {sess.status === 'scheduled' ? (
                     <>
                       <button
-                        onClick={() => handleUpdateStatus(sess.id, 'completed')}
-                        className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-center transition flex items-center justify-center space-x-1 shadow-md shadow-emerald-500/20 active:scale-95"
-                        title="1-Click Mark Completed & Deduct Credit"
+                        onClick={() => setSessionForWorkoutLogging(sess)}
+                        className="w-full py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-500/20 active:scale-95 text-xs"
+                        title="Open workout day template, log sets & weights, and complete session"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
-                        <span>✓ Mark Done</span>
+                        <Dumbbell className="w-3.5 h-3.5 text-slate-950" />
+                        <span>🏋️ Log Workout & Complete Session</span>
                       </button>
-                      <button
-                        onClick={() => handleUpdateStatus(sess.id, 'no-show')}
-                        className="py-1.5 px-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg border border-red-500/20 transition text-[11px]"
-                      >
-                        No-Show
-                      </button>
-                      <button
-                        onClick={() => setEditingSession(sess)}
-                        className="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg border border-slate-700 transition flex items-center space-x-1 text-[11px]"
-                      >
-                        <Pencil className="w-3 h-3 text-cyan-400" />
-                        <span>Edit</span>
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex justify-between items-center w-full">
-                      <span className="text-[11px] text-emerald-400 font-bold flex items-center space-x-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Completed</span>
-                      </span>
-                      <div className="flex items-center space-x-2">
+
+                      <div className="flex items-center space-x-1.5 pt-0.5">
+                        <button
+                          onClick={() => handleUpdateStatus(sess.id, 'completed')}
+                          className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-emerald-400 font-semibold rounded-xl text-center transition border border-slate-750 text-[11px]"
+                          title="Quick complete without logging workout"
+                        >
+                          <span>Quick Done</span>
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(sess.id, 'no-show')}
+                          className="py-1.5 px-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-xl border border-red-500/20 transition text-[11px]"
+                        >
+                          No-Show
+                        </button>
                         <button
                           onClick={() => setEditingSession(sess)}
-                          className="text-[11px] text-cyan-400 hover:underline flex items-center space-x-1"
+                          className="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-semibold rounded-xl border border-slate-750 transition flex items-center space-x-1 text-[11px]"
                         >
-                          <Pencil className="w-3 h-3" />
-                          <span>Edit Details</span>
-                        </button>
-                        <button
-                          onClick={() => handleUpdateStatus(sess.id, 'scheduled')}
-                          className="text-[11px] text-slate-400 hover:text-white underline"
-                        >
-                          Reopen
+                          <Pencil className="w-3 h-3 text-cyan-400" />
+                          <span>Edit</span>
                         </button>
                       </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2 w-full">
+                      <div className="flex justify-between items-center w-full">
+                        <span className="text-[11px] text-emerald-400 font-bold flex items-center space-x-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Session Completed</span>
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setEditingSession(sess)}
+                            className="text-[11px] text-cyan-400 hover:underline flex items-center space-x-1"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus(sess.id, 'scheduled')}
+                            className="text-[11px] text-slate-400 hover:text-white underline"
+                          >
+                            Reopen
+                          </button>
+                        </div>
+                      </div>
+
+                      {sess.workoutDone ? (
+                        <div className="flex items-center justify-between p-2 bg-emerald-950/30 border border-emerald-800/40 rounded-xl">
+                          <div className="flex items-center space-x-1.5 truncate">
+                            <Dumbbell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="font-bold text-white text-[11px] truncate">
+                              {sess.workoutDone.dayName || sess.workoutDone.workoutName}
+                            </span>
+                            <span className="text-emerald-400 text-[10px] font-mono shrink-0">
+                              ({(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg)
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1 shrink-0 ml-2">
+                            <button
+                              onClick={() => setSessionForWorkoutView(sess)}
+                              className="px-2 py-0.5 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-[10px] transition"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => setSessionForWorkoutLogging(sess)}
+                              className="p-1 text-slate-400 hover:text-white rounded"
+                              title="Edit logged weights & reps"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setSessionForWorkoutLogging(sess)}
+                          className="w-full py-1.5 bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-slate-700 rounded-xl font-bold text-[11px] flex items-center justify-center space-x-1 transition"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Add Logged Workout to this Session</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -784,6 +839,35 @@ export function SessionCalendar({ onSelectClient }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* LIVE SESSION WORKOUT LOGGER MODAL */}
+      {sessionForWorkoutLogging && (
+        <SessionWorkoutLoggerModal
+          isOpen={!!sessionForWorkoutLogging}
+          session={sessionForWorkoutLogging}
+          client={clients.find(c => c.id === sessionForWorkoutLogging.clientId)}
+          onClose={() => setSessionForWorkoutLogging(null)}
+          onSuccess={(updated) => {
+            setSessions(prev => prev.map(s => s.id === updated.id ? updated : s));
+            api.getClients().then(setClients);
+          }}
+        />
+      )}
+
+      {/* COMPLETED WORKOUT VIEWER MODAL */}
+      {sessionForWorkoutView && (
+        <CompletedWorkoutViewModal
+          isOpen={!!sessionForWorkoutView}
+          session={sessionForWorkoutView}
+          clientName={sessionForWorkoutView.clientName}
+          isTrainer={true}
+          onClose={() => setSessionForWorkoutView(null)}
+          onEdit={(s) => {
+            setSessionForWorkoutView(null);
+            setSessionForWorkoutLogging(s);
+          }}
+        />
       )}
     </div>
   );

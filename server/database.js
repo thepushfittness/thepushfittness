@@ -526,6 +526,19 @@ class Database {
     return newLog;
   }
 
+  updateWorkoutLog(id, updates) {
+    const idx = this.data.workoutLogs.findIndex(w => w.id === id);
+    if (idx === -1) return null;
+    this.data.workoutLogs[idx] = { 
+      ...this.data.workoutLogs[idx], 
+      ...updates, 
+      id, 
+      updatedAt: new Date().toISOString() 
+    };
+    this.save();
+    return this.data.workoutLogs[idx];
+  }
+
   // --- Nutrition Logs ---
   getNutritionLogsByClient(clientId) {
     return this.data.nutritionLogs
@@ -677,9 +690,58 @@ class Database {
           targetClient.id,
           'session_completed',
           'Training Session Completed',
-          `${updated.sessionType} at ${updated.location || 'Studio'} completed.`
+          `${updated.sessionType} at ${updated.location || 'Studio'} completed.${updated.workoutDone ? ` Workout: ${updated.workoutDone.dayName || updated.workoutDone.workoutName || 'Routine'}` : ''}`
         );
       }
+
+      // Sync workoutDone to workoutLogs
+      if (updated.workoutDone) {
+        const existingLogIdx = this.data.workoutLogs.findIndex(w => w.sessionId === id);
+        const exercisesCompleted = (updated.workoutDone.exercises || []).map(ex => ({
+          exerciseName: ex.name,
+          alternative: ex.alternative || '',
+          notes: ex.notes || '',
+          sets: (ex.sets || []).map(s => ({
+            setNum: s.setNum,
+            weightKg: Number(s.weightKg) || 0,
+            reps: Number(s.reps) || 0,
+            completed: s.completed !== false
+          }))
+        }));
+
+        const totalVol = exercisesCompleted.reduce((sum, ex) => {
+          return sum + ex.sets.reduce((sSum, s) => s.completed ? sSum + (s.weightKg * s.reps) : sSum, 0);
+        }, 0);
+
+        updated.workoutDone.totalVolumeKg = totalVol;
+
+        const logPayload = {
+          sessionId: id,
+          clientId: targetClientId,
+          workoutName: updated.workoutDone.dayName || updated.workoutDone.workoutName || `${updated.sessionType} Workout`,
+          programId: updated.workoutDone.programId || null,
+          programName: updated.workoutDone.programName || null,
+          dayNumber: updated.workoutDone.dayNumber || 1,
+          date: updated.date,
+          durationMinutes: updated.durationMinutes,
+          totalVolumeKg: totalVol,
+          exercisesCompleted,
+          finisher: updated.workoutDone.finisher || null,
+          notes: updated.workoutDone.sessionNotes || updated.notes || '',
+          rpe: updated.workoutDone.rpe || 8
+        };
+
+        if (existingLogIdx >= 0) {
+          this.data.workoutLogs[existingLogIdx] = {
+            ...this.data.workoutLogs[existingLogIdx],
+            ...logPayload,
+            updatedAt: new Date().toISOString()
+          };
+        } else if (updated.status === 'completed') {
+          this.createWorkoutLog(logPayload);
+        }
+      }
+
       this.recalculateClientAdherence(targetClient.id);
     }
 

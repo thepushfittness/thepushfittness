@@ -5,6 +5,8 @@ import { EditClientModal } from './EditClientModal';
 import { EditSessionModal } from './EditSessionModal';
 import { QuickConditioningModal } from './QuickConditioningModal';
 import { ChangeWorkoutPlanModal } from './ChangeWorkoutPlanModal';
+import { SessionWorkoutLoggerModal } from './SessionWorkoutLoggerModal';
+import { CompletedWorkoutViewModal } from '../common/CompletedWorkoutViewModal';
 import { 
   User, 
   ArrowLeft, 
@@ -222,6 +224,10 @@ export function ClientProfileView({
   const [changePlanInitialMode, setChangePlanInitialMode] = useState('switch');
   const [programToDelete, setProgramToDelete] = useState(null);
   const [isDeletingProgram, setIsDeletingProgram] = useState(false);
+
+  // Live Session Workout Logger State
+  const [sessionForWorkoutLogging, setSessionForWorkoutLogging] = useState(null);
+  const [sessionForWorkoutView, setSessionForWorkoutView] = useState(null);
 
   const handleOpenChangePlan = (prog, mode = 'switch') => {
     setSelectedProgramForChange(prog);
@@ -1327,16 +1333,24 @@ export function ClientProfileView({
             </div>
             <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
               <button
-                onClick={handleDirectLogSession}
-                className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/30 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
-                title="1-Click Log Completed Session Today (-1 Remaining Credit)"
+                onClick={() => {
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  const todaySession = sessions.find(s => s.date === todayStr && s.status === 'scheduled') || sessions.find(s => s.status === 'scheduled') || sessions[0];
+                  if (todaySession) {
+                    setSessionForWorkoutLogging(todaySession);
+                  } else {
+                    handleDirectLogSession();
+                  }
+                }}
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
+                title="Start live workout session for today"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>⚡ 1-Click Log Today's Session</span>
+                <Dumbbell className="w-4 h-4" />
+                <span>⚡ Live Workout Session</span>
               </button>
               <button
                 onClick={() => setShowBookSessionModal(true)}
-                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Schedule New Session</span>
@@ -1351,9 +1365,9 @@ export function ClientProfileView({
                   <tr>
                     <th className="py-3 px-4">Date & Time</th>
                     <th className="py-3 px-4">Session Type</th>
-                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Workout Routine</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Trainer Notes</th>
+                    <th className="py-3 px-4">Notes & Volume</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1381,8 +1395,29 @@ export function ClientProfileView({
                           </div>
                           <div className="text-[11px] text-slate-400 mt-0.5">{sess.time} ({sess.durationMinutes || 60}m)</div>
                         </td>
-                        <td className="py-3 px-4 text-slate-200">{sess.sessionType}</td>
-                        <td className="py-3 px-4 text-slate-400">{sess.location}</td>
+                        <td className="py-3 px-4">
+                          <span className="text-slate-200 font-medium block">{sess.sessionType}</span>
+                          <span className="text-[11px] text-slate-500">{sess.location}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {sess.workoutDone ? (
+                            <button
+                              onClick={() => setSessionForWorkoutView(sess)}
+                              className="text-left group cursor-pointer"
+                              title="Click to view workout breakdown"
+                            >
+                              <div className="flex items-center space-x-1 text-emerald-400 font-bold group-hover:underline">
+                                <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate max-w-[180px]">{sess.workoutDone.dayName || sess.workoutDone.workoutName}</span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 font-mono block">
+                                {sess.workoutDone.exercises?.length || 0} ex • {(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg vol
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-500 text-[11px] italic">Not logged</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4">
                           <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                             sess.status === 'completed'
@@ -1394,26 +1429,64 @@ export function ClientProfileView({
                             {sess.status}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-400 text-[11px] max-w-xs truncate">{sess.notes || '—'}</td>
+                        <td className="py-3 px-4 text-slate-400 text-[11px] max-w-xs truncate">
+                          {sess.workoutDone?.sessionNotes || sess.notes || '—'}
+                        </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
                             {sess.status === 'scheduled' ? (
-                              <button
-                                onClick={() => handleQuickCompleteSession(sess.id)}
-                                className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 rounded-lg text-xs font-bold transition flex items-center space-x-1 border border-emerald-500/30 shadow-sm"
-                                title="1-Click Mark Completed"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Complete ✓</span>
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => setSessionForWorkoutLogging(sess)}
+                                  className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-xs transition flex items-center space-x-1 shadow-sm"
+                                  title="Open workout template, log sets & weights, and complete session"
+                                >
+                                  <Dumbbell className="w-3.5 h-3.5" />
+                                  <span>Log & Complete</span>
+                                </button>
+                                <button
+                                  onClick={() => handleQuickCompleteSession(sess.id)}
+                                  className="px-2 py-1 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-emerald-400 rounded-lg text-[11px] font-semibold transition border border-slate-750"
+                                  title="Quick complete without logging"
+                                >
+                                  Quick Done
+                                </button>
+                              </>
                             ) : sess.status === 'completed' ? (
-                              <button
-                                onClick={() => handleQuickReopenSession(sess.id)}
-                                className="text-[11px] text-slate-400 hover:text-white underline mr-1"
-                                title="Revert to Scheduled"
-                              >
-                                Reopen
-                              </button>
+                              <div className="flex items-center space-x-1">
+                                {sess.workoutDone ? (
+                                  <>
+                                    <button
+                                      onClick={() => setSessionForWorkoutView(sess)}
+                                      className="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold transition"
+                                      title="View logged workout"
+                                    >
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={() => setSessionForWorkoutLogging(sess)}
+                                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                                      title="Edit logged weights"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() => setSessionForWorkoutLogging(sess)}
+                                    className="px-2 py-1 bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-slate-700 rounded-lg text-xs font-semibold transition"
+                                  >
+                                    + Add Workout
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleQuickReopenSession(sess.id)}
+                                  className="text-[10px] text-slate-500 hover:text-white underline ml-1"
+                                  title="Revert to Scheduled"
+                                >
+                                  Reopen
+                                </button>
+                              </div>
                             ) : null}
 
                             <button
@@ -2674,6 +2747,35 @@ export function ClientProfileView({
             </div>
           </div>
         </div>
+      )}
+
+      {/* LIVE SESSION WORKOUT LOGGER MODAL */}
+      {sessionForWorkoutLogging && (
+        <SessionWorkoutLoggerModal
+          isOpen={!!sessionForWorkoutLogging}
+          session={sessionForWorkoutLogging}
+          client={client}
+          programs={programs}
+          onClose={() => setSessionForWorkoutLogging(null)}
+          onSuccess={() => {
+            loadClientData();
+          }}
+        />
+      )}
+
+      {/* COMPLETED WORKOUT DETAIL VIEW MODAL */}
+      {sessionForWorkoutView && (
+        <CompletedWorkoutViewModal
+          isOpen={!!sessionForWorkoutView}
+          session={sessionForWorkoutView}
+          clientName={client?.name}
+          isTrainer={true}
+          onClose={() => setSessionForWorkoutView(null)}
+          onEdit={(sess) => {
+            setSessionForWorkoutView(null);
+            setSessionForWorkoutLogging(sess);
+          }}
+        />
       )}
     </div>
   );

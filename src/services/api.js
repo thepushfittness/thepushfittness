@@ -161,6 +161,7 @@ export const api = {
   // Workout Logs
   getWorkoutLogs: (clientId) => request(`/workout-logs?clientId=${clientId}`),
   createWorkoutLog: (logData) => request('/workout-logs', { method: 'POST', body: logData }),
+  updateWorkoutLog: (id, updates) => request(`/workout-logs/${id}`, { method: 'PUT', body: updates }),
 
   // Nutrition Logs
   getNutritionLogs: (clientId) => request(`/nutrition-logs?clientId=${clientId}`),

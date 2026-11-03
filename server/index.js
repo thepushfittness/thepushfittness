@@ -396,6 +396,12 @@ app.post('/api/workout-logs', authenticateToken, (req, res) => {
   res.status(201).json(created);
 });
 
+app.put('/api/workout-logs/:id', authenticateToken, requireTrainer, (req, res) => {
+  const updated = db.updateWorkoutLog(req.params.id, req.body);
+  if (!updated) return res.status(404).json({ error: 'Workout log not found' });
+  res.json(updated);
+});
+
 // --- Nutrition Logs ---
 
 app.get('/api/nutrition-logs', authenticateToken, (req, res) => {
