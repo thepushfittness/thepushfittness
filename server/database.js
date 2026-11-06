@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initialData } from './seedData.js';
+import { getSampleRosterData } from './sampleRoster.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,8 +53,17 @@ class Database {
       return false;
     }
     this.data = snapshot;
-    this.save(false);
+    if (!this.data.lastUpdatedAt) {
+      this.data.lastUpdatedAt = Date.now();
+    }
+    this.save(true);
     return true;
+  }
+
+  seedSampleRoster() {
+    this.data = getSampleRosterData();
+    this.save(true);
+    return this.data;
   }
 
   reset() {

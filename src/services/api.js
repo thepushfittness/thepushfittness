@@ -20,10 +20,14 @@ export async function ensureServerSynced() {
     const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
     if (!raw) return;
     const localSnapshot = JSON.parse(raw);
-    if (!localSnapshot || !localSnapshot.lastUpdatedAt) return;
+    if (!localSnapshot || !Array.isArray(localSnapshot.clients)) return;
 
     const syncRes = await fetch(`${API_BASE}/system/sync`).then(r => r.ok ? r.json() : null).catch(() => null);
-    if (syncRes && (syncRes.lastUpdatedAt || 0) < localSnapshot.lastUpdatedAt) {
+    const serverTime = syncRes?.lastUpdatedAt || 0;
+    const serverClientCount = syncRes?.clientCount || 0;
+
+    // Restore if server has 0 clients while local snapshot has clients, OR local snapshot is newer
+    if (localSnapshot.clients.length > 0 && (serverClientCount === 0 || (localSnapshot.lastUpdatedAt || 0) > serverTime)) {
       await fetch(`${API_BASE}/system/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -239,6 +243,19 @@ export const api = {
     return res.blob();
   },
 
-  // Database Reset
-  resetDb: () => request('/admin/reset-db', { method: 'POST' })
+  // Database Reset & Sample Roster
+  resetDb: () => request('/admin/reset-db', { method: 'POST' }),
+  seedSampleClients: () => request('/admin/seed-sample-clients', { method: 'POST' }),
+  restoreLocalSnapshot: async () => {
+    const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    if (!raw) throw new Error('No local browser backup found.');
+    const snapshot = JSON.parse(raw);
+    const res = await fetch(`${API_BASE}/system/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ snapshot })
+    });
+    if (!res.ok) throw new Error('Failed to restore snapshot to server.');
+    return res.json();
+  }
 };

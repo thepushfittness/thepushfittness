@@ -51,6 +51,34 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
   const [renewMethod, setRenewMethod] = useState('UPI (GPay / PhonePe)');
   const [renewNotes, setRenewNotes] = useState('');
   const [isRenewing, setIsRenewing] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [isRestoringBackup, setIsRestoringBackup] = useState(false);
+
+  const handleSeedSampleRoster = async () => {
+    try {
+      setIsSeeding(true);
+      const res = await api.seedSampleClients();
+      showToast(`🎉 Loaded ${res.clientCount || 5} clients into your active roster!`);
+      await fetchClients();
+    } catch (err) {
+      showToast(err.message || 'Failed to seed sample clients', 'error');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleRestoreFromBrowser = async () => {
+    try {
+      setIsRestoringBackup(true);
+      const res = await api.restoreLocalSnapshot();
+      showToast(`🔄 Restored ${res.clientCount || 'all'} clients from browser local backup!`);
+      await fetchClients();
+    } catch (err) {
+      showToast(err.message || 'No local backup found in this browser cache.', 'error');
+    } finally {
+      setIsRestoringBackup(false);
+    }
+  };
 
   const fetchClients = async () => {
     try {
@@ -206,7 +234,16 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <button
+            onClick={handleRestoreFromBrowser}
+            disabled={isRestoringBackup}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 text-xs font-semibold transition disabled:opacity-50"
+            title="Restore from browser backup if clients were reset"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Sync Backup</span>
+          </button>
           <button
             onClick={() => api.exportCsv('clients')}
             className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 text-xs font-semibold transition"
@@ -327,10 +364,53 @@ export function ClientDatabase({ onSelectClient, onOpenAddClient, initialFilter 
         {loading ? (
           <div className="p-12 text-center text-slate-400 text-xs">Loading clients roster...</div>
         ) : clients.length === 0 ? (
-          <div className="p-12 text-center">
-            <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-300">No clients match your filter criteria</h3>
-            <p className="text-xs text-slate-500 mt-1">Try resetting the filters or adding a new client to your roster.</p>
+          <div className="p-8 sm:p-12 text-center max-w-lg mx-auto space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700/80 flex items-center justify-center mx-auto text-emerald-400 shadow-xl">
+              <Users className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">
+                {statusFilter !== 'all' || paymentFilter !== 'all' || search.trim() 
+                  ? 'No clients match your filter criteria' 
+                  : 'No Clients in Roster Yet'}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                {statusFilter !== 'all' || paymentFilter !== 'all' || search.trim()
+                  ? 'Try clearing your search query or resetting the filters.'
+                  : 'Your database slate is clean. You can load your starter athlete roster (Anindita Sen, Sarah Chen, Marcus Vance, David Miller, Priya Sharma with full ₹18,000 prepaid packages, schedules, and workout logs), restore from your browser’s local backup, or add a client.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleSeedSampleRoster}
+                disabled={isSeeding}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-1.5 disabled:opacity-50"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{isSeeding ? 'Loading Roster...' : '⚡ Load Starter Client Roster (5 Athletes)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRestoreFromBrowser}
+                disabled={isRestoringBackup}
+                className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-1.5 disabled:opacity-50"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{isRestoringBackup ? 'Restoring...' : 'Restore from Browser Backup'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onOpenAddClient}
+                className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-1.5"
+              >
+                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Add Client</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">

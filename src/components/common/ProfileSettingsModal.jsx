@@ -12,7 +12,9 @@ import {
   CheckCircle2, 
   ShieldCheck,
   Eye,
-  EyeOff
+  EyeOff,
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 
 export function ProfileSettingsModal({ isOpen, onClose }) {
@@ -181,6 +183,47 @@ export function ProfileSettingsModal({ isOpen, onClose }) {
               </button>
             </div>
           </div>
+
+          {/* Client Roster & Data Recovery (Trainer Only) */}
+          {user?.role === 'trainer' && (
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <label className="text-slate-400 font-semibold block text-[11px]">Client Roster & Data Recovery</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await api.seedSampleClients();
+                      showToast(`Loaded ${res.clientCount || 5} clients into your active roster!`);
+                      window.location.reload();
+                    } catch (e) {
+                      showToast(e.message || 'Failed to seed sample roster', 'error');
+                    }
+                  }}
+                  className="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-[11px] font-semibold transition flex items-center justify-center space-x-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Load Starter Roster</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await api.restoreLocalSnapshot();
+                      showToast(`Restored ${res.clientCount || 'all'} clients from browser backup!`);
+                      window.location.reload();
+                    } catch (e) {
+                      showToast(e.message || 'No local backup found in this browser', 'error');
+                    }
+                  }}
+                  className="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-[11px] font-semibold transition flex items-center justify-center space-x-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Restore Backup</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2 pt-2">

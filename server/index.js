@@ -744,15 +744,25 @@ app.get('/api/export/:type', authenticateToken, requireTrainer, (req, res) => {
   res.status(400).json({ error: 'Invalid export type. Supported: clients, payments' });
 });
 
+// Seed realistic starter client roster
+app.post('/api/admin/seed-sample-clients', authenticateToken, requireTrainer, (req, res) => {
+  const data = db.seedSampleRoster();
+  res.json({ success: true, message: 'Sample client roster loaded successfully.', clientCount: data.clients.length });
+});
+
 // Reset database route for fresh test setup
 app.post('/api/admin/reset-db', authenticateToken, requireTrainer, (req, res) => {
   db.reset();
-  res.json({ success: true, message: 'Database reset to initial demo seeds.' });
+  res.json({ success: true, message: 'Database reset to clean slate.' });
 });
 
 // --- Health & Persistent State Sync Endpoints ---
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', lastUpdatedAt: db.data.lastUpdatedAt || 0 });
+  res.json({ 
+    status: 'ok', 
+    lastUpdatedAt: db.data.lastUpdatedAt || 0,
+    clientCount: db.data.clients?.length || 0 
+  });
 });
 
 app.get('/api/system/sync', (req, res) => {
@@ -773,11 +783,25 @@ app.post('/api/system/restore', (req, res) => {
   }
   const serverTime = db.data.lastUpdatedAt || 0;
   const incomingTime = snapshot.lastUpdatedAt || 0;
-  if (incomingTime > serverTime) {
+  const serverClientCount = db.data.clients?.length || 0;
+  const incomingClientCount = snapshot.clients?.length || 0;
+
+  // Restore if incoming snapshot has newer timestamp, OR if server currently has 0 clients while snapshot has clients
+  if (incomingTime > serverTime || (serverClientCount === 0 && incomingClientCount > 0)) {
     db.restoreSnapshot(snapshot);
-    return res.json({ success: true, restored: true, lastUpdatedAt: incomingTime });
+    return res.json({ 
+      success: true, 
+      restored: true, 
+      lastUpdatedAt: db.data.lastUpdatedAt || Date.now(),
+      clientCount: incomingClientCount 
+    });
   }
-  res.json({ success: true, restored: false, lastUpdatedAt: serverTime });
+  res.json({ 
+    success: true, 
+    restored: false, 
+    lastUpdatedAt: serverTime,
+    clientCount: serverClientCount 
+  });
 });
 
 // Serve frontend built files in production mode
