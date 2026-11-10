@@ -419,7 +419,7 @@ export function SessionWorkoutLoggerModal({
       const updatedSession = await api.updateSession(session.id, sessionUpdates);
 
       if (shouldComplete) {
-        showToast(`✓ Session completed & workout logged! ${calculatedVolume.toLocaleString()} kg total volume recorded.`);
+        showToast('✓ Session completed & workout logged successfully!');
       } else {
         showToast('Workout progress draft saved!');
       }
