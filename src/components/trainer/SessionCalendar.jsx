@@ -24,7 +24,8 @@ import {
   Check,
   Dumbbell,
   Edit3,
-  FileText
+  FileText,
+  Flame
 } from 'lucide-react';
 
 const COMMON_TIMES = [
@@ -516,13 +517,23 @@ export function SessionCalendar({ onSelectClient }) {
                       {sess.workoutDone ? (
                         <div className="flex items-center justify-between p-2 bg-emerald-950/30 border border-emerald-800/40 rounded-xl">
                           <div className="flex items-center space-x-1.5 truncate">
-                            <Dumbbell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            {sess.workoutDone.finisher && (!sess.workoutDone.exercises || sess.workoutDone.exercises.length === 0) ? (
+                              <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            ) : (
+                              <Dumbbell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            )}
                             <span className="font-bold text-white text-[11px] truncate">
                               {sess.workoutDone.dayName || sess.workoutDone.workoutName}
                             </span>
-                            <span className="text-emerald-400 text-[10px] font-mono shrink-0">
-                              ({(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg)
-                            </span>
+                            {sess.workoutDone.exercises?.length > 0 ? (
+                              <span className="text-emerald-400 text-[10px] font-mono shrink-0">
+                                ({(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg{sess.workoutDone.finisher ? ' + WOD' : ''})
+                              </span>
+                            ) : (
+                              <span className="text-amber-400 text-[10px] font-mono shrink-0">
+                                ({sess.workoutDone.finisher?.format || 'WOD'})
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center space-x-1 shrink-0 ml-2">
                             <button

@@ -1133,13 +1133,24 @@ export function ClientApp() {
                       className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between hover:border-emerald-500/40 transition group"
                     >
                       <div className="space-y-0.5">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                           <span className="font-bold text-xs text-white">
                             {s.workoutDone.dayName || s.workoutDone.workoutName || 'Completed Session'}
                           </span>
-                          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-semibold">
-                            {s.workoutDone.exercises?.length || 0} exercises
-                          </span>
+                          {s.workoutDone.exercises?.length > 0 ? (
+                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-semibold">
+                              {s.workoutDone.exercises.length} exercises
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">
+                              Conditioning WOD
+                            </span>
+                          )}
+                          {s.workoutDone.finisher && s.workoutDone.exercises?.length > 0 && (
+                            <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">
+                              + WOD
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-slate-400">
                           {s.date} • {s.time} • Volume: <strong className="text-slate-200">{(s.workoutDone.totalVolumeKg || 0).toLocaleString()} kg ({Math.round((s.workoutDone.totalVolumeKg || 0) * 2.20462).toLocaleString()} lbs)</strong>
@@ -1539,10 +1550,25 @@ export function ClientApp() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center space-x-3 text-[11px] text-slate-300">
-                          <span>{sess.workoutDone.exercises?.length || 0} exercises</span>
-                          <span>•</span>
-                          <span>Volume: <strong className="text-emerald-400">{(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg ({Math.round((sess.workoutDone.totalVolumeKg || 0) * 2.20462).toLocaleString()} lbs)</strong></span>
+                        <div className="flex items-center space-x-3 text-[11px] text-slate-300 flex-wrap gap-y-1">
+                          {sess.workoutDone.exercises?.length > 0 ? (
+                            <>
+                              <span>{sess.workoutDone.exercises.length} exercises</span>
+                              {sess.workoutDone.finisher && <span className="text-amber-400 font-semibold">• + WOD ({sess.workoutDone.finisher.format || 'Finisher'})</span>}
+                              <span>•</span>
+                              <span>Volume: <strong className="text-emerald-400">{(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg ({Math.round((sess.workoutDone.totalVolumeKg || 0) * 2.20462).toLocaleString()} lbs)</strong></span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-amber-400 font-bold">🔥 {sess.workoutDone.finisher?.format || 'Conditioning WOD'}</span>
+                              {sess.workoutDone.finisher?.score && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-white font-mono font-semibold">Result: {sess.workoutDone.finisher.score}</span>
+                                </>
+                              )}
+                            </>
+                          )}
                           {sess.workoutDone.rpe && (
                             <>
                               <span>•</span>

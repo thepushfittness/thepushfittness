@@ -81,19 +81,47 @@ export function CompletedWorkoutViewModal({
 
         {/* Stats highlight cards */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Exercises</span>
-            <span className="text-base font-bold text-white font-mono mt-0.5 block">{exercises.length}</span>
-          </div>
-          <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Volume</span>
-            <span className="text-base font-bold text-emerald-400 font-mono mt-0.5 block">
-              {(wd.totalVolumeKg || 0).toLocaleString()} kg
-              <span className="text-xs text-slate-400 font-normal ml-1">
-                ({(wd.totalVolumeLbs || Math.round((wd.totalVolumeKg || 0) * 2.20462)).toLocaleString()} lbs)
-              </span>
-            </span>
-          </div>
+          {exercises.length === 0 && finisher ? (
+            <>
+              <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
+                <span className="text-[10px] text-amber-400 uppercase font-bold block flex items-center justify-center space-x-1">
+                  <Flame className="w-3 h-3 text-amber-400" />
+                  <span>Session Type</span>
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-white font-mono mt-0.5 block truncate">
+                  {finisher.format || 'Conditioning WOD'}
+                </span>
+              </div>
+              <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
+                <span className="text-[10px] text-amber-400 uppercase font-bold block flex items-center justify-center space-x-1">
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  <span>WOD Result</span>
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-emerald-400 font-mono mt-0.5 block truncate">
+                  {finisher.score || 'Completed'}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Exercises</span>
+                <span className="text-base font-bold text-white font-mono mt-0.5 block">
+                  {exercises.length}
+                  {finisher && <span className="text-xs text-amber-400 font-sans ml-1">+ WOD</span>}
+                </span>
+              </div>
+              <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Volume</span>
+                <span className="text-base font-bold text-emerald-400 font-mono mt-0.5 block">
+                  {(wd.totalVolumeKg || 0).toLocaleString()} kg
+                  <span className="text-xs text-slate-400 font-normal ml-1">
+                    ({(wd.totalVolumeLbs || Math.round((wd.totalVolumeKg || 0) * 2.20462)).toLocaleString()} lbs)
+                  </span>
+                </span>
+              </div>
+            </>
+          )}
           <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Session Intensity</span>
             <span className="text-base font-bold text-cyan-400 font-mono mt-0.5 block">
@@ -103,81 +131,136 @@ export function CompletedWorkoutViewModal({
         </div>
 
         {/* Exercises Breakdown */}
-        <div className="space-y-3">
-          <h4 className="font-bold text-white text-xs uppercase tracking-wider text-slate-400">
-            Exercises & Logged Weights:
-          </h4>
+        {exercises.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-bold text-white text-xs uppercase tracking-wider text-slate-400">
+              Exercises & Logged Weights:
+            </h4>
 
-          <div className="space-y-2.5">
-            {exercises.map((ex, exIdx) => (
-              <div key={ex.id || exIdx} className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] inline-flex items-center justify-center">
-                      {exIdx + 1}
-                    </span>
-                    <span className="font-bold text-white text-xs">{ex.name}</span>
-                    {ex.alternative && (
-                      <span className="text-[10px] text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded">
-                        Alt: {ex.alternative}
+            <div className="space-y-2.5">
+              {exercises.map((ex, exIdx) => (
+                <div key={ex.id || exIdx} className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] inline-flex items-center justify-center">
+                        {exIdx + 1}
                       </span>
-                    )}
-                  </div>
-                  <span className="text-slate-400 text-[11px] font-mono">
-                    {ex.sets?.length || 0} Sets
-                  </span>
-                </div>
-
-                {/* Sets chips */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {ex.sets?.map((s, sIdx) => (
-                    <div 
-                      key={sIdx}
-                      className={`px-2.5 py-1 rounded-xl text-xs flex items-center space-x-1.5 border ${
-                        s.completed !== false 
-                          ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300' 
-                          : 'bg-slate-900 border-slate-800 text-slate-500'
-                      }`}
-                    >
-                      <span className="font-bold text-[10px] text-slate-400">Set {s.setNum}:</span>
-                      <span className="font-bold font-mono text-white">
-                        {s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg} {s.weightUnit || 'kg'}
-                      </span>
-                      <span className="text-slate-400">×</span>
-                      <span className="font-bold text-white">
-                        {s.reps && Number(s.reps) > 0 ? `${s.reps} reps` : ''}
-                        {s.reps && Number(s.reps) > 0 && s.seconds && Number(s.seconds) > 0 ? ' • ' : ''}
-                        {s.seconds && Number(s.seconds) > 0 ? `${s.seconds}s` : (!s.reps || Number(s.reps) === 0 ? '0 reps' : '')}
-                      </span>
-                      {s.completed !== false && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      <span className="font-bold text-white text-xs">{ex.name}</span>
+                      {ex.alternative && (
+                        <span className="text-[10px] text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded">
+                          Alt: {ex.alternative}
+                        </span>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <span className="text-slate-400 text-[11px] font-mono">
+                      {ex.sets?.length || 0} Sets
+                    </span>
+                  </div>
 
-                {/* Exercise notes / movement changes */}
-                {ex.notes && (
-                  <div className="p-2 bg-slate-900/60 rounded-xl text-[11px] text-amber-300/90 border border-slate-800/60 flex items-start space-x-1.5">
-                    <span className="font-bold">📝 Note:</span>
-                    <span>{ex.notes}</span>
+                  {/* Sets chips */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {ex.sets?.map((s, sIdx) => (
+                      <div 
+                        key={sIdx}
+                        className={`px-2.5 py-1 rounded-xl text-xs flex items-center space-x-1.5 border ${
+                          s.completed !== false 
+                            ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300' 
+                            : 'bg-slate-900 border-slate-800 text-slate-500'
+                        }`}
+                      >
+                        <span className="font-bold text-[10px] text-slate-400">Set {s.setNum}:</span>
+                        <span className="font-bold font-mono text-white">
+                          {s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg} {s.weightUnit || 'kg'}
+                        </span>
+                        <span className="text-slate-400">×</span>
+                        <span className="font-bold text-white">
+                          {s.reps && Number(s.reps) > 0 ? `${s.reps} reps` : ''}
+                          {s.reps && Number(s.reps) > 0 && s.seconds && Number(s.seconds) > 0 ? ' • ' : ''}
+                          {s.seconds && Number(s.seconds) > 0 ? `${s.seconds}s` : (!s.reps || Number(s.reps) === 0 ? '0 reps' : '')}
+                        </span>
+                        {s.completed !== false && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Exercise notes / movement changes */}
+                  {ex.notes && (
+                    <div className="p-2 bg-slate-900/60 rounded-xl text-[11px] text-amber-300/90 border border-slate-800/60 flex items-start space-x-1.5">
+                      <span className="font-bold">📝 Note:</span>
+                      <span>{ex.notes}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Conditioning WOD / MetCon Section */}
+        {finisher && (
+          <div className="bg-gradient-to-br from-amber-950/30 via-slate-950 to-slate-950 border border-amber-500/40 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-amber-500/20 pb-2.5">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Flame className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h4 className="font-bold text-white text-xs sm:text-sm">
+                      {finisher.title || 'Conditioning WOD'}
+                    </h4>
+                    <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      {finisher.format || 'Conditioning'}
+                    </span>
+                  </div>
+                  {finisher.duration && (
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Target / Cap: {finisher.duration}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Prescribed Movements / WOD details */}
+            {finisher.description && (
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-1">
+                  Prescribed Workout / Movements:
+                </span>
+                <p className="text-slate-200 text-xs font-mono whitespace-pre-line leading-relaxed">
+                  {finisher.description}
+                </p>
+              </div>
+            )}
+
+            {/* Client Score / Performance Highlight */}
+            {(finisher.score || finisher.notes) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                {finisher.score && (
+                  <div className="bg-gradient-to-r from-amber-500/15 to-amber-500/5 border border-amber-500/30 p-3 rounded-xl">
+                    <div className="flex items-center space-x-1.5 text-amber-400 font-bold text-[11px] mb-0.5">
+                      <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Recorded Client Score / Time:</span>
+                    </div>
+                    <span className="text-sm font-bold text-white font-mono block">
+                      {finisher.score}
+                    </span>
+                  </div>
+                )}
+
+                {finisher.notes && (
+                  <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
+                    <span className="text-slate-400 font-bold text-[11px] block mb-0.5">
+                      Coach Pacing & Intensity Cues:
+                    </span>
+                    <span className="text-xs text-amber-300/90 italic block">
+                      "{finisher.notes}"
+                    </span>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Conditioning Finisher */}
-        {finisher && (
-          <div className="bg-amber-950/20 border border-amber-500/30 rounded-2xl p-4 space-y-1.5">
-            <div className="flex items-center space-x-1.5 text-amber-400 font-bold text-xs">
-              <Flame className="w-4 h-4 text-amber-400" />
-              <span>Finisher: {finisher.title || 'Conditioning'}</span>
-            </div>
-            {finisher.description && (
-              <p className="text-slate-300 text-xs whitespace-pre-line">{finisher.description}</p>
-            )}
-            {finisher.notes && (
-              <p className="text-amber-300 text-[11px] font-medium pt-1">Result: {finisher.notes}</p>
             )}
           </div>
         )}

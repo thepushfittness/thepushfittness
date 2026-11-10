@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
-import { parseNotepadWorkout, convertWorkoutToNotepadText } from './workoutUtils';
+import { parseNotepadWorkout, convertWorkoutToNotepadText, CONDITIONING_FORMATS, CONDITIONING_WOD_PRESETS } from './workoutUtils';
 import { 
   Dumbbell, 
   Calendar, 
@@ -25,7 +25,9 @@ import {
   FileText,
   ClipboardList,
   Copy,
-  RotateCcw
+  RotateCcw,
+  Trophy,
+  Timer
 } from 'lucide-react';
 
 export function SessionWorkoutLoggerModal({
@@ -104,8 +106,17 @@ export function SessionWorkoutLoggerModal({
       setSelectedDayNumber(wd.dayNumber || 1);
       setSessionNotes(wd.sessionNotes || session.notes || '');
       setSessionRpe(wd.rpe || 8);
-      setFinisher(wd.finisher || null);
-      setFinisherNotes(wd.finisherNotes || (wd.finisher?.notes || ''));
+      const loadedFinisher = wd.finisher ? {
+        format: wd.finisher.format || 'AMRAP',
+        title: wd.finisher.title || 'Conditioning WOD',
+        duration: wd.finisher.duration || '',
+        description: wd.finisher.description || '',
+        score: wd.finisher.score || wd.finisherNotes || (wd.finisher.notes || ''),
+        notes: wd.finisher.notes || '',
+        isDailyVariable: true
+      } : null;
+      setFinisher(loadedFinisher);
+      setFinisherNotes(loadedFinisher?.score || wd.finisherNotes || '');
 
       const hasLbs = wd.weightUnit === 'lbs' || (wd.exercises || []).some(ex => (ex.sets || []).some(s => s.weightUnit === 'lbs'));
       setGlobalUnit(hasLbs ? 'lbs' : (wd.weightUnit || 'kg'));
@@ -168,8 +179,21 @@ export function SessionWorkoutLoggerModal({
   const selectProgramDay = (prog, day, showNotification = true) => {
     setSelectedDayNumber(day.dayNumber);
     setWorkoutName(`${day.name || `Day ${day.dayNumber}`} (${day.focus || prog.name})`);
-    setFinisher(day.conditioning || null);
-    setFinisherNotes(day.conditioning?.description || '');
+    if (day.conditioning) {
+      setFinisher({
+        format: day.conditioning.format || 'AMRAP',
+        title: day.conditioning.title || 'Conditioning Finisher',
+        duration: day.conditioning.duration || '12 mins',
+        description: day.conditioning.description || '',
+        score: day.conditioning.score || '',
+        notes: day.conditioning.notes || '',
+        isDailyVariable: true
+      });
+      setFinisherNotes(day.conditioning.score || '');
+    } else {
+      setFinisher(null);
+      setFinisherNotes('');
+    }
 
     const loadedExs = (day.exercises || []).map((ex, exIdx) => {
       const numSets = Number(ex.sets) || 3;
@@ -295,12 +319,66 @@ export function SessionWorkoutLoggerModal({
   };
 
   const removeExercise = (exIdx) => {
-    if (exercises.length <= 1) {
-      showToast('Session must have at least 1 exercise', 'error');
+    if (exercises.length <= 1 && !finisher) {
+      showToast('Session must have at least 1 exercise or a conditioning WOD', 'error');
       return;
     }
     const updated = exercises.filter((_, idx) => idx !== exIdx);
     setExercises(updated);
+  };
+
+  // Conditioning WOD Finisher management
+  const handleAddFinisher = (preset = null) => {
+    if (preset) {
+      setFinisher({
+        format: preset.format,
+        title: preset.title,
+        duration: preset.duration,
+        description: preset.description,
+        score: preset.score || '',
+        notes: preset.notes || '',
+        isDailyVariable: true
+      });
+      setFinisherNotes(preset.score || '');
+      showToast(`Added ${preset.format} conditioning WOD!`);
+    } else {
+      setFinisher({
+        format: 'AMRAP',
+        title: '12-Min AMRAP: Engine Burnout',
+        duration: '12 mins',
+        description: '10 Burpees over barbell\n15 Kettlebell Swings (24kg / 16kg)\n200m Sprint or Row',
+        score: '',
+        notes: 'Sustain 80-85% intensity, pace smoothly',
+        isDailyVariable: true
+      });
+      setFinisherNotes('');
+      showToast('Added Conditioning WOD to today\'s session!');
+    }
+  };
+
+  const handleRemoveFinisher = () => {
+    setFinisher(null);
+    setFinisherNotes('');
+    showToast('Removed conditioning WOD');
+  };
+
+  const handleFinisherChange = (field, value) => {
+    setFinisher(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, [field]: value };
+      if (field === 'score') {
+        setFinisherNotes(value);
+      }
+      return updated;
+    });
+  };
+
+  const handleStartStandaloneConditioning = () => {
+    setSelectedDayNumber(null);
+    setWorkoutName('Conditioning & MetCon Studio Session');
+    setExercises([]);
+    handleAddFinisher(CONDITIONING_WOD_PRESETS[0]);
+    showToast('Started Standalone Conditioning WOD Session!');
   };
 
   // Movement substitution / swap
@@ -340,9 +418,11 @@ export function SessionWorkoutLoggerModal({
   // Save & Complete or Draft Handler
   const handleSaveSessionWorkout = async (shouldComplete = true, overrideData = null) => {
     if (!session) return;
-    const currentExercises = overrideData?.exercises || exercises;
-    if (!currentExercises || currentExercises.length === 0) {
-      showToast('Please add at least one exercise', 'error');
+    const currentExercises = overrideData?.exercises !== undefined ? overrideData.exercises : exercises;
+    const saveFinisher = overrideData?.finisher !== undefined ? overrideData.finisher : finisher;
+
+    if ((!currentExercises || currentExercises.length === 0) && !saveFinisher) {
+      showToast('Please add at least one exercise or a conditioning WOD', 'error');
       return;
     }
 
@@ -350,7 +430,7 @@ export function SessionWorkoutLoggerModal({
       setSaving(true);
       const activeProg = clientPrograms.find(p => p.id === selectedProgramId);
 
-      const calculatedVolumeKg = currentExercises.reduce((sum, ex) => {
+      const calculatedVolumeKg = (currentExercises || []).reduce((sum, ex) => {
         return sum + (ex.sets || []).reduce((sSum, s) => {
           if (!s.completed) return sSum;
           const reps = Number(s.reps) || 0;
@@ -361,8 +441,7 @@ export function SessionWorkoutLoggerModal({
         }, 0);
       }, 0);
 
-      const saveFinisher = overrideData ? overrideData.finisher : finisher;
-      const saveFinisherNotes = overrideData ? (overrideData.finisher?.notes || overrideData.finisher?.description || '') : finisherNotes;
+      const saveFinisherNotes = overrideData ? (overrideData.finisher?.score || overrideData.finisher?.notes || overrideData.finisher?.description || '') : finisherNotes;
       const saveSessionNotes = (overrideData?.sessionNotes !== undefined ? overrideData.sessionNotes : sessionNotes).trim();
       const saveRpe = Number(overrideData?.rpe || sessionRpe) || 8;
       const saveWorkoutName = overrideData?.workoutName || workoutName || 'Studio Coaching Session Workout';
@@ -374,7 +453,7 @@ export function SessionWorkoutLoggerModal({
         dayName: saveWorkoutName,
         weightUnit: globalUnit,
         focus: activeProg?.days?.find(d => d.dayNumber === selectedDayNumber)?.focus || '',
-        exercises: currentExercises.map((ex, idx) => ({
+        exercises: (currentExercises || []).map((ex, idx) => ({
           id: ex.id || `ex-${idx}`,
           name: ex.name,
           prescribedText: ex.prescribedText || '',
@@ -396,9 +475,12 @@ export function SessionWorkoutLoggerModal({
           })
         })),
         finisher: saveFinisher ? {
-          title: saveFinisher.title || saveFinisher.format || 'Conditioning Finisher',
+          format: saveFinisher.format || 'AMRAP',
+          title: saveFinisher.title || saveFinisher.format || 'Conditioning WOD',
+          duration: saveFinisher.duration || '',
           description: saveFinisher.description || '',
-          notes: saveFinisherNotes.trim()
+          score: (saveFinisher.score || saveFinisherNotes || '').trim(),
+          notes: (saveFinisher.notes || '').trim()
         } : null,
         sessionNotes: saveSessionNotes,
         rpe: saveRpe,
@@ -442,16 +524,16 @@ export function SessionWorkoutLoggerModal({
     }
 
     const parsed = parseNotepadWorkout(notepadText);
-    if (!parsed.exercises || parsed.exercises.length === 0) {
-      showToast('Could not find any exercises in the notes. Check format tips below.', 'error');
+    if ((!parsed.exercises || parsed.exercises.length === 0) && !parsed.finisher) {
+      showToast('Could not find any exercises or conditioning WOD in the notes. Check format tips below.', 'error');
       return;
     }
 
     setWorkoutName(parsed.workoutName || workoutName || 'Studio Workout Log');
-    setExercises(parsed.exercises);
+    setExercises(parsed.exercises || []);
     if (parsed.finisher) {
       setFinisher(parsed.finisher);
-      setFinisherNotes(parsed.finisher.notes || parsed.finisher.description || '');
+      setFinisherNotes(parsed.finisher.score || parsed.finisher.notes || parsed.finisher.description || '');
     }
     if (parsed.sessionNotes) {
       setSessionNotes(parsed.sessionNotes);
@@ -464,7 +546,7 @@ export function SessionWorkoutLoggerModal({
       handleSaveSessionWorkout(true, parsed);
     } else {
       setActiveMode('template');
-      showToast(`✓ Converted ${parsed.exercises.length} movements into workout log! Review sets below.`);
+      showToast(`✓ Converted workout & conditioning log! Review details below.`);
     }
   };
 
@@ -806,6 +888,23 @@ RPE: 8`}
                 <p>No periodized days found in client's program. You can log exercises freely below.</p>
               </div>
             )}
+
+            {/* Quick standalone conditioning shortcut */}
+            <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-[11px] text-slate-400">Taking a dedicated conditioning/cardio session today?</span>
+              <button
+                type="button"
+                onClick={handleStartStandaloneConditioning}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center space-x-1.5 ${
+                  !selectedDayNumber && finisher && exercises.length === 0
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 ring-1 ring-amber-500 shadow-sm'
+                    : 'bg-slate-900 border-amber-500/30 text-amber-400 hover:bg-slate-850 hover:border-amber-400'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-400" />
+                <span>🔥 Standalone Conditioning WOD Session (MetCon & Cardio)</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1102,42 +1201,243 @@ RPE: 8`}
                 </div>
               </div>
             ))}
+            {exercises.length === 0 && (
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 text-center space-y-2">
+                <p className="text-slate-400 text-xs">
+                  No strength movements logged — tracking conditioning WOD below.
+                </p>
+                <button
+                  type="button"
+                  onClick={addExercise}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-850 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold inline-flex items-center space-x-1.5 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Strength Exercise</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Add another movement button */}
-          <div className="flex justify-center pt-2">
+          {/* Action buttons under exercises */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
             <button
               type="button"
               onClick={addExercise}
               className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 font-bold rounded-2xl text-xs flex items-center space-x-2 transition shadow-sm"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Add Another Exercise Movement to Today's Session</span>
+              <span>+ Add Exercise Movement</span>
             </button>
+
+            {!finisher && (
+              <button
+                type="button"
+                onClick={() => handleAddFinisher()}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 font-bold rounded-2xl text-xs flex items-center space-x-2 transition shadow-sm"
+                title="Add an AMRAP, For Time, EMOM, Tabata, or Cardio WOD at the end of this routine"
+              >
+                <Flame className="w-4 h-4 text-amber-400" />
+                <span>🔥 + Add Conditioning WOD / Finisher</span>
+              </button>
+            )}
           </div>
+
+          {/* Invitation banner when no finisher is added yet */}
+          {!finisher && exercises.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-950/20 via-slate-950 to-slate-950 p-3.5 rounded-2xl border border-amber-500/25 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-bold text-white text-xs block">
+                    Finishing with Conditioning or MetCon today?
+                  </span>
+                  <span className="text-[11px] text-slate-400 block">
+                    Track AMRAP rounds, For Time splits, EMOM completion, Tabata intervals, or Cardio erg distances.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAddFinisher()}
+                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center space-x-1.5 transition shadow-md shadow-amber-500/20 whitespace-nowrap active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5 text-slate-950" />
+                <span>+ Add Conditioning WOD</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* STEP 3: FINISHER / CONDITIONING ROUTINE */}
+        {/* STEP 3: CONDITIONING WOD & METCON TRACKER */}
         {finisher && (
-          <div className="bg-gradient-to-r from-amber-950/30 via-slate-950 to-slate-950 p-4 rounded-2xl border border-amber-500/30 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-amber-400 font-bold text-xs flex items-center space-x-1.5">
-                <Flame className="w-4 h-4 text-amber-400" />
-                <span>Conditioning Finisher: {finisher.title || finisher.format}</span>
-              </span>
-              <span className="text-[10px] text-slate-400">{finisher.duration || 'Finisher'}</span>
+          <div className="bg-gradient-to-br from-amber-950/40 via-slate-950 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/40 space-y-4 shadow-xl animate-fade-in">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-amber-500/20 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-inner">
+                  <Flame className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    <h4 className="font-bold text-white text-sm">
+                      Conditioning WOD / MetCon Finisher
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      {finisher.format || 'Conditioning'}
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-[11px] mt-0.5">
+                    Track non-traditional conditioning: AMRAPs, timed circuits, EMOMs, Tabata & Cardio ergs.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleRemoveFinisher}
+                  className="px-2.5 py-1 text-slate-400 hover:text-red-400 hover:bg-slate-900 rounded-xl text-xs transition flex items-center space-x-1"
+                  title="Remove conditioning WOD"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove WOD</span>
+                </button>
+              </div>
             </div>
-            <p className="text-slate-300 text-xs whitespace-pre-line leading-relaxed">
-              {finisher.description}
-            </p>
-            <div className="pt-1">
-              <input
-                type="text"
-                value={finisherNotes}
-                onChange={(e) => setFinisherNotes(e.target.value)}
-                placeholder="Log finisher performance (e.g. Completed all 5 rounds in 9:45, client hit 80 RPM)..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-amber-300 placeholder:text-slate-500 outline-none focus:border-amber-400"
+
+            {/* Format Selector Pills */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400 font-semibold">Select Conditioning Format:</span>
+                <span className="text-[10px] text-amber-400/90 italic">
+                  {CONDITIONING_FORMATS.find(f => f.id === finisher.format)?.subtitle || 'Non-traditional conditioning'}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {CONDITIONING_FORMATS.map(fmt => {
+                  const isSelected = (finisher.format || '').toLowerCase() === fmt.id.toLowerCase();
+                  return (
+                    <button
+                      key={fmt.id}
+                      type="button"
+                      onClick={() => {
+                        handleFinisherChange('format', fmt.id);
+                        if (!finisher.duration) {
+                          handleFinisherChange('duration', fmt.defaultCap);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center space-x-1 ${
+                        isSelected
+                          ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20 ring-1 ring-amber-300'
+                          : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/40 hover:text-white'
+                      }`}
+                    >
+                      <span>{fmt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Presets Pills */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center space-x-1 text-[11px] text-slate-400">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Load Studio WOD Preset:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {CONDITIONING_WOD_PRESETS.map((preset, pIdx) => (
+                  <button
+                    key={pIdx}
+                    type="button"
+                    onClick={() => handleAddFinisher(preset)}
+                    className="px-2 py-1 bg-slate-900/90 hover:bg-slate-850 text-slate-300 hover:text-amber-300 border border-slate-800 hover:border-amber-500/40 rounded-xl text-[11px] transition font-medium"
+                  >
+                    {preset.title.split(':')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* WOD Title & Duration Cap Inputs */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-[11px] font-bold text-slate-300">WOD Title</label>
+                <input
+                  type="text"
+                  value={finisher.title || ''}
+                  onChange={(e) => handleFinisherChange('title', e.target.value)}
+                  placeholder="e.g. 12-Min AMRAP: Engine Burnout / 2,000m Row Test"
+                  className="w-full bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl px-3 py-1.5 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-300">Time Cap / Duration</label>
+                <input
+                  type="text"
+                  value={finisher.duration || ''}
+                  onChange={(e) => handleFinisherChange('duration', e.target.value)}
+                  placeholder="e.g. 12 mins / Cap: 15:00"
+                  className="w-full bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl px-3 py-1.5 text-xs text-amber-300 font-mono outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Prescribed Movements / Description */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-300">
+                Prescribed Movements & Circuit Details
+              </label>
+              <textarea
+                rows={3}
+                value={finisher.description || ''}
+                onChange={(e) => handleFinisherChange('description', e.target.value)}
+                placeholder="Prescribe movements, reps & stations, e.g.:&#10;10 Burpees over bar&#10;15 Kettlebell Swings (24kg)&#10;200m Sprint or Row"
+                className="w-full bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl p-3 text-xs text-slate-200 outline-none leading-relaxed font-mono"
               />
+            </div>
+
+            {/* CORE TRACKING FIELDS: SCORE & COACH PACING */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 bg-amber-950/20 p-3 rounded-xl border border-amber-500/30">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-amber-300 flex items-center space-x-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Client Recorded Score / Performance Result</span>
+                </label>
+                <input
+                  type="text"
+                  value={finisher.score || ''}
+                  onChange={(e) => handleFinisherChange('score', e.target.value)}
+                  placeholder={
+                    CONDITIONING_FORMATS.find(f => (f.id || '').toLowerCase() === (finisher.format || '').toLowerCase())?.placeholderScore ||
+                    'e.g. 5 Rounds + 14 Reps / 11:42 / 7:38'
+                  }
+                  className="w-full bg-slate-900 border-2 border-amber-500/50 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold placeholder:text-slate-500 outline-none shadow-inner"
+                />
+                <span className="text-[10px] text-slate-400 block">
+                  Logged in client history for future comparison.
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
+                  <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Coach Pacing & Intensity Notes</span>
+                </label>
+                <input
+                  type="text"
+                  value={finisher.notes || ''}
+                  onChange={(e) => handleFinisherChange('notes', e.target.value)}
+                  placeholder="e.g. Kept 80% heart rate, paced burpees steady, broke only on round 4..."
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 outline-none"
+                />
+                <span className="text-[10px] text-slate-400 block">
+                  Cues, heart rate zone, and recovery feedback.
+                </span>
+              </div>
             </div>
           </div>
         )}

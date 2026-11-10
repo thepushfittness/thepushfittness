@@ -75,6 +75,73 @@ export const MODULAR_DAY_PRESETS = [
   }
 ];
 
+export const CONDITIONING_FORMATS = [
+  { id: 'AMRAP', label: 'AMRAP', subtitle: 'As Many Rounds As Possible', defaultCap: '12 mins', placeholderScore: 'e.g. 5 Rounds + 14 Reps' },
+  { id: 'For Time', label: 'For Time', subtitle: 'Work completed against time cap', defaultCap: 'Time Cap: 15 mins', placeholderScore: 'e.g. 11:42 (Under 15m cap)' },
+  { id: 'EMOM', label: 'EMOM', subtitle: 'Every Minute On the Minute', defaultCap: '16 mins', placeholderScore: 'e.g. All 16 mins completed unbroken' },
+  { id: 'Tabata / Intervals', label: 'Tabata / Intervals', subtitle: '20s High Intensity / 10s Rest', defaultCap: '8 rounds (4 mins)', placeholderScore: 'e.g. 14 cal lowest round, 118 total' },
+  { id: 'Cardio / Erg', label: 'Cardio / Erg', subtitle: 'Row / Bike / SkiErg / Run distance', defaultCap: '20 mins', placeholderScore: 'e.g. 2,000m in 7:38 (1:54.5/500m split)' },
+  { id: 'Functional Circuit', label: 'Functional Circuit', subtitle: 'Station-to-station conditioning', defaultCap: '4 rounds', placeholderScore: 'e.g. 4 rounds done in 14:20' },
+  { id: 'Custom WOD', label: 'Custom WOD', subtitle: 'Freeform MetCon / Finisher', defaultCap: '10 mins', placeholderScore: 'e.g. Log rounds, split, or score' }
+];
+
+export const CONDITIONING_WOD_PRESETS = [
+  {
+    format: 'AMRAP',
+    title: '12-Min AMRAP: Engine Burnout',
+    duration: '12 mins',
+    description: '10 Burpees over barbell\n15 Kettlebell Swings (24kg / 16kg)\n200m Sprint / Row',
+    score: '',
+    notes: 'Sustain 80-85% max heart rate, sprint final 2 mins',
+    isDailyVariable: true
+  },
+  {
+    format: 'For Time',
+    title: '21-15-9 Studio Sprint',
+    duration: 'Time Cap: 12 mins',
+    description: '21-15-9 Reps for time:\nDumbbell Thrusters (15kg / 10kg)\nBox Jump Overs (24" / 20")\nCalorie Echo Bike',
+    score: '',
+    notes: 'Push hard on the 15 round; pacing is critical',
+    isDailyVariable: true
+  },
+  {
+    format: 'EMOM',
+    title: '16-Min EMOM: Power & Capacity',
+    duration: '16 mins (4 rounds of 4 stations)',
+    description: 'Min 1: 15 Kettlebell Swings (24kg)\nMin 2: 12 Burpees to 6" target\nMin 3: 15 Calorie Row\nMin 4: 45s Hollow Body Plank Hold',
+    score: '',
+    notes: 'Work should take 40-45s per minute to earn 15s rest',
+    isDailyVariable: true
+  },
+  {
+    format: 'Tabata / Intervals',
+    title: 'Tabata High-Intensity Finisher',
+    duration: '8 rounds (20s on / 10s off)',
+    description: '20s Max Effort Echo / Assault Bike\n10s Rest\n× 8 rounds',
+    score: '',
+    notes: 'Record lowest RPM / Watts and total calories',
+    isDailyVariable: true
+  },
+  {
+    format: 'Cardio / Erg',
+    title: '2,000m Concept2 Row Time Trial',
+    duration: 'Target: Sub 8:00',
+    description: '2,000m Row for personal best time.\nDamper 4-5. Steady 28-30 SPM stroke rate.',
+    score: '',
+    notes: 'Record total time and 500m average split',
+    isDailyVariable: true
+  },
+  {
+    format: 'Functional Circuit',
+    title: 'Sled, Core & Carry Finisher',
+    duration: '3-4 Rounds',
+    description: '40m Heavy Sled Push (+60kg)\n20 Russian Twists with Medicine Ball\n40m Farmer Carry (2x24kg DB)\n60s Rest between rounds',
+    score: '',
+    notes: 'Unbroken carries, quick transition from sled to twist',
+    isDailyVariable: true
+  }
+];
+
 export function parseNotepadText(rawText) {
   const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
   const exercises = [];
@@ -85,11 +152,20 @@ export function parseNotepadText(rawText) {
     if (condMatch || line.toLowerCase().startsWith('conditioning:') || line.toLowerCase().startsWith('finisher:')) {
       const rest = condMatch ? condMatch[1] : line.replace(/^(?:conditioning|finisher):\s*/i, '');
       const durationMatch = rest.match(/(\d+\s*(?:min|mins|minutes|rounds))/i);
+      let detectedFormat = 'Custom WOD';
+      if (/amrap/i.test(line)) detectedFormat = 'AMRAP';
+      else if (/for\s*time/i.test(line)) detectedFormat = 'For Time';
+      else if (/emom/i.test(line)) detectedFormat = 'EMOM';
+      else if (/tabata/i.test(line)) detectedFormat = 'Tabata / Intervals';
+      else if (/row|bike|run|erg|cardio/i.test(line)) detectedFormat = 'Cardio / Erg';
+      else if (/circuit/i.test(line)) detectedFormat = 'Functional Circuit';
+
       conditioning = {
-        format: rest.split(/[:,-]/)[0]?.trim() || 'Daily Conditioning',
-        title: rest.split(/[-:]/)[0]?.trim() || "Today's Finisher",
+        format: detectedFormat,
+        title: rest.split(/[-:]/)[0]?.trim() || `${detectedFormat} Finisher`,
         duration: durationMatch ? durationMatch[1] : '10-12 mins',
         description: rest,
+        score: '',
         notes: 'Pace as programmed by Coach Pushkar',
         isDailyVariable: true,
         lastUpdatedDate: new Date().toISOString().split('T')[0]
@@ -193,18 +269,49 @@ export function parseNotepadWorkout(rawText) {
     }
 
     // 3. Check for Finisher / Conditioning line
-    const condMatch = line.match(/^(?:conditioning|finisher|metcon|circuit|amrap|emom|wod)[:\s]+(.*)/i);
+    const condMatch = line.match(/^(?:conditioning|finisher|metcon|circuit|amrap|emom|wod|cardio)[:\s]+(.*)/i);
     if (condMatch) {
       const rest = condMatch[1].trim();
       const durationMatch = rest.match(/(\d+\s*(?:min|mins|minutes|rounds|sec|secs))/i);
+      let detectedFormat = 'Custom WOD';
+      if (/amrap/i.test(line)) detectedFormat = 'AMRAP';
+      else if (/for\s*time/i.test(line)) detectedFormat = 'For Time';
+      else if (/emom/i.test(line)) detectedFormat = 'EMOM';
+      else if (/tabata/i.test(line)) detectedFormat = 'Tabata / Intervals';
+      else if (/row|bike|run|erg|cardio/i.test(line)) detectedFormat = 'Cardio / Erg';
+      else if (/circuit/i.test(line)) detectedFormat = 'Functional Circuit';
+
       finisher = {
-        format: rest.split(/[:;,]/)[0]?.trim() || 'Conditioning Finisher',
-        title: rest.split(/[:;,]/)[0]?.trim() || "Today's Finisher",
-        duration: durationMatch ? durationMatch[1] : '10-12 mins',
+        format: detectedFormat,
+        title: rest.split(/[:;,]/)[0]?.trim() || `${detectedFormat} Finisher`,
+        duration: durationMatch ? durationMatch[1] : (detectedFormat === 'AMRAP' ? '12 mins' : (detectedFormat === 'EMOM' ? '16 mins' : '10-12 mins')),
         description: rest,
+        score: '',
         notes: '',
         isDailyVariable: true
       };
+      continue;
+    }
+
+    // 3b. Check for WOD / Finisher Score or Result line
+    const scoreMatch = line.match(/^(?:wod\s*score|finisher\s*score|score|result|wod\s*result|time\s*taken|recorded\s*score)[:\s]+(.*)/i);
+    if (scoreMatch) {
+      if (finisher) {
+        finisher.score = scoreMatch[1].trim();
+      } else {
+        sessionNotes = (sessionNotes ? sessionNotes + ' ' : '') + `Score: ${scoreMatch[1].trim()}`;
+      }
+      continue;
+    }
+
+    // 3c. Check for WOD Notes line
+    const wodNotesMatch = line.match(/^(?:wod\s*notes|finisher\s*notes|pacing)[:\s]+(.*)/i);
+    if (wodNotesMatch) {
+      if (finisher) {
+        finisher.notes = wodNotesMatch[1].trim();
+      } else {
+        sessionNotes = (sessionNotes ? sessionNotes + ' ' : '') + `WOD Notes: ${wodNotesMatch[1].trim()}`;
+      }
       continue;
     }
 
@@ -426,8 +533,8 @@ export function parseNotepadWorkout(rawText) {
     }
   }
 
-  // Fallback: If no exercises were parsed, return a blank starter
-  if (exercises.length === 0) {
+  // Fallback: If no exercises were parsed AND no conditioning/finisher exists, return a blank starter
+  if (exercises.length === 0 && !finisher) {
     exercises.push({
       id: `ex-${Date.now()}-1`,
       name: 'Exercise 1',
@@ -443,7 +550,7 @@ export function parseNotepadWorkout(rawText) {
   }
 
   return {
-    workoutName: workoutName || 'Studio Workout Log',
+    workoutName: workoutName || (finisher ? `${finisher.title || finisher.format} Session` : 'Studio Workout Log'),
     exercises,
     finisher,
     sessionNotes,
@@ -486,7 +593,13 @@ export function convertWorkoutToNotepadText(dayOrWorkout) {
 
   if (dayOrWorkout.conditioning || dayOrWorkout.finisher) {
     const fin = dayOrWorkout.conditioning || dayOrWorkout.finisher;
-    lines.push(`Finisher: ${fin.title || fin.format || 'Conditioning'}: ${fin.description || ''}`);
+    lines.push(`WOD: ${fin.title || fin.format || 'Conditioning'}${fin.duration ? ` (${fin.duration})` : ''}: ${fin.description || ''}`);
+    if (fin.score) {
+      lines.push(`Score: ${fin.score}`);
+    }
+    if (fin.notes) {
+      lines.push(`WOD Notes: ${fin.notes}`);
+    }
   }
 
   if (dayOrWorkout.sessionNotes || dayOrWorkout.notes) {

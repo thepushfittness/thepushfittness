@@ -1408,11 +1408,24 @@ export function ClientProfileView({
                               title="Click to view workout breakdown"
                             >
                               <div className="flex items-center space-x-1 text-emerald-400 font-bold group-hover:underline">
-                                <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+                                {sess.workoutDone.finisher && (!sess.workoutDone.exercises || sess.workoutDone.exercises.length === 0) ? (
+                                  <Flame className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                                ) : (
+                                  <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+                                )}
                                 <span className="truncate max-w-[180px]">{sess.workoutDone.dayName || sess.workoutDone.workoutName}</span>
                               </div>
                               <span className="text-[10px] text-slate-500 font-mono block">
-                                {sess.workoutDone.exercises?.length || 0} ex • {(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg ({Math.round((sess.workoutDone.totalVolumeKg || 0) * 2.20462).toLocaleString()} lbs) vol
+                                {sess.workoutDone.exercises?.length > 0 ? (
+                                  <>
+                                    {sess.workoutDone.exercises.length} ex • {(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg vol
+                                    {sess.workoutDone.finisher && <span className="text-amber-400 font-sans ml-1">• + WOD</span>}
+                                  </>
+                                ) : (
+                                  <span className="text-amber-400 font-sans">
+                                    🔥 {sess.workoutDone.finisher?.format || 'WOD'}: {sess.workoutDone.finisher?.score || 'Logged'}
+                                  </span>
+                                )}
                               </span>
                             </button>
                           ) : (
