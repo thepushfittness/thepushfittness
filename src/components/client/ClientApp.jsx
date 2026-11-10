@@ -878,7 +878,7 @@ export function ClientApp() {
                         <div className="space-y-2 pt-1">
                           <div className="grid grid-cols-4 text-[10px] uppercase font-bold text-slate-500 px-2">
                             <span>Set</span>
-                            <span>Weight (kg)</span>
+                            <span>Weight</span>
                             <span>Reps</span>
                             <span className="text-right">Done</span>
                           </div>
@@ -891,16 +891,32 @@ export function ClientApp() {
                               }`}
                             >
                               <span className="font-bold text-slate-300">Set {s.setNum}</span>
-                              <input
-                                type="number"
-                                value={s.weightKg}
-                                onChange={(e) => {
-                                  const updated = [...exSets];
-                                  updated[sIdx].weightKg = Number(e.target.value);
-                                  setLoggedSets({ ...loggedSets, [ex.id]: updated });
-                                }}
-                                className="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-bold"
-                              />
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="number"
+                                  value={s.weightKg}
+                                  onChange={(e) => {
+                                    const updated = [...exSets];
+                                    updated[sIdx].weightKg = Number(e.target.value);
+                                    setLoggedSets({ ...loggedSets, [ex.id]: updated });
+                                  }}
+                                  className="w-12 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-white font-bold text-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...exSets];
+                                    updated[sIdx].weightUnit = (updated[sIdx].weightUnit || 'kg') === 'kg' ? 'lbs' : 'kg';
+                                    setLoggedSets({ ...loggedSets, [ex.id]: updated });
+                                  }}
+                                  className={`text-[9px] font-bold px-1 py-0.5 rounded uppercase ${
+                                    (s.weightUnit || 'kg') === 'lbs' ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300'
+                                  }`}
+                                  title="Toggle kg / lbs"
+                                >
+                                  {s.weightUnit || 'kg'}
+                                </button>
+                              </div>
                               <input
                                 type="number"
                                 value={s.reps}
@@ -1126,7 +1142,7 @@ export function ClientApp() {
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-400">
-                          {s.date} • {s.time} • Volume: <strong className="text-slate-200">{(s.workoutDone.totalVolumeKg || 0).toLocaleString()} kg</strong>
+                          {s.date} • {s.time} • Volume: <strong className="text-slate-200">{(s.workoutDone.totalVolumeKg || 0).toLocaleString()} kg ({Math.round((s.workoutDone.totalVolumeKg || 0) * 2.20462).toLocaleString()} lbs)</strong>
                         </p>
                       </div>
                       <button
@@ -1526,7 +1542,7 @@ export function ClientApp() {
                         <div className="flex items-center space-x-3 text-[11px] text-slate-300">
                           <span>{sess.workoutDone.exercises?.length || 0} exercises</span>
                           <span>•</span>
-                          <span>Volume: <strong className="text-emerald-400">{(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg</strong></span>
+                          <span>Volume: <strong className="text-emerald-400">{(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg ({Math.round((sess.workoutDone.totalVolumeKg || 0) * 2.20462).toLocaleString()} lbs)</strong></span>
                           {sess.workoutDone.rpe && (
                             <>
                               <span>•</span>

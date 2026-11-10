@@ -89,6 +89,9 @@ export function CompletedWorkoutViewModal({
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Volume</span>
             <span className="text-base font-bold text-emerald-400 font-mono mt-0.5 block">
               {(wd.totalVolumeKg || 0).toLocaleString()} kg
+              <span className="text-xs text-slate-400 font-normal ml-1">
+                ({(wd.totalVolumeLbs || Math.round((wd.totalVolumeKg || 0) * 2.20462)).toLocaleString()} lbs)
+              </span>
             </span>
           </div>
           <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
@@ -137,7 +140,9 @@ export function CompletedWorkoutViewModal({
                       }`}
                     >
                       <span className="font-bold text-[10px] text-slate-400">Set {s.setNum}:</span>
-                      <span className="font-bold font-mono text-white">{s.weightKg} kg</span>
+                      <span className="font-bold font-mono text-white">
+                        {s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg} {s.weightUnit || 'kg'}
+                      </span>
                       <span className="text-slate-400">×</span>
                       <span className="font-bold text-white">
                         {s.reps && Number(s.reps) > 0 ? `${s.reps} reps` : ''}

@@ -1247,7 +1247,7 @@ export function ClientProfileView({
                           <div key={sIdx} className="flex justify-between text-[11px]">
                             <span>Set {s.setNum}:</span>
                             <span className="font-medium text-emerald-400">
-                              {s.weightKg}kg × {s.reps} reps (RPE {s.rpe})
+                              {s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg}{s.weightUnit || 'kg'} × {s.reps} reps (RPE {s.rpe})
                             </span>
                           </div>
                         ))}
@@ -1412,7 +1412,7 @@ export function ClientProfileView({
                                 <span className="truncate max-w-[180px]">{sess.workoutDone.dayName || sess.workoutDone.workoutName}</span>
                               </div>
                               <span className="text-[10px] text-slate-500 font-mono block">
-                                {sess.workoutDone.exercises?.length || 0} ex • {(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg vol
+                                {sess.workoutDone.exercises?.length || 0} ex • {(sess.workoutDone.totalVolumeKg || 0).toLocaleString()} kg ({Math.round((sess.workoutDone.totalVolumeKg || 0) * 2.20462).toLocaleString()} lbs) vol
                               </span>
                             </button>
                           ) : (

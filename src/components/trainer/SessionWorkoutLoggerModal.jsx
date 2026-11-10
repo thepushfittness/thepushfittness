@@ -63,6 +63,7 @@ export function SessionWorkoutLoggerModal({
   // Swap exercise state
   const [swappingExIdx, setSwappingExIdx] = useState(null);
   const [swapName, setSwapName] = useState('');
+  const [globalUnit, setGlobalUnit] = useState('kg'); // 'kg' | 'lbs'
 
   // Load programs if not passed
   useEffect(() => {
@@ -106,6 +107,9 @@ export function SessionWorkoutLoggerModal({
       setFinisher(wd.finisher || null);
       setFinisherNotes(wd.finisherNotes || (wd.finisher?.notes || ''));
 
+      const hasLbs = wd.weightUnit === 'lbs' || (wd.exercises || []).some(ex => (ex.sets || []).some(s => s.weightUnit === 'lbs'));
+      setGlobalUnit(hasLbs ? 'lbs' : (wd.weightUnit || 'kg'));
+
       const loadedExs = (wd.exercises || []).map((ex, exIdx) => ({
         id: ex.id || `ex-${exIdx}-${Date.now()}`,
         name: ex.name || 'Exercise',
@@ -114,7 +118,8 @@ export function SessionWorkoutLoggerModal({
         alternative: ex.alternative || '',
         sets: (ex.sets || []).map((s, sIdx) => ({
           setNum: s.setNum || sIdx + 1,
-          weightKg: s.weightKg !== undefined ? s.weightKg : (s.targetWeightKg || 50),
+          weightKg: s.weight !== undefined && s.weight !== null ? s.weight : (s.weightKg !== undefined ? s.weightKg : (s.targetWeightKg || 50)),
+          weightUnit: s.weightUnit || (hasLbs ? 'lbs' : (wd.weightUnit || 'kg')),
           reps: s.reps !== undefined ? s.reps : (s.targetReps || ''),
           seconds: s.seconds !== undefined ? s.seconds : (s.durationSeconds || ''),
           completed: s.completed !== undefined ? s.completed : true
@@ -154,9 +159,9 @@ export function SessionWorkoutLoggerModal({
     notes: '',
     alternative: '',
     sets: [
-      { setNum: 1, weightKg: 50, reps: 10, seconds: '', completed: true },
-      { setNum: 2, weightKg: 50, reps: 10, seconds: '', completed: true },
-      { setNum: 3, weightKg: 50, reps: 10, seconds: '', completed: true }
+      { setNum: 1, weightKg: globalUnit === 'lbs' ? 100 : 50, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true },
+      { setNum: 2, weightKg: globalUnit === 'lbs' ? 100 : 50, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true },
+      { setNum: 3, weightKg: globalUnit === 'lbs' ? 100 : 50, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true }
     ]
   });
 
@@ -182,6 +187,7 @@ export function SessionWorkoutLoggerModal({
         return {
           setNum: sIdx + 1,
           weightKg: setWeight,
+          weightUnit: globalUnit || 'kg',
           reps: parsedReps,
           seconds: parsedSeconds,
           completed: true
@@ -230,12 +236,46 @@ export function SessionWorkoutLoggerModal({
     const lastSet = curSets[curSets.length - 1];
     curSets.push({
       setNum: curSets.length + 1,
-      weightKg: lastSet ? lastSet.weightKg : 50,
+      weightKg: lastSet ? lastSet.weightKg : (globalUnit === 'lbs' ? 100 : 50),
+      weightUnit: lastSet ? (lastSet.weightUnit || globalUnit) : globalUnit,
       reps: lastSet ? lastSet.reps : 10,
       seconds: lastSet ? (lastSet.seconds || '') : '',
       completed: true
     });
     setExercises(updated);
+  };
+
+  // Unit toggle handlers: pounds (lbs) along with kgs
+  const handleGlobalUnitChange = (newUnit) => {
+    setGlobalUnit(newUnit);
+    const updated = exercises.map(ex => ({
+      ...ex,
+      sets: (ex.sets || []).map(s => ({
+        ...s,
+        weightUnit: newUnit
+      }))
+    }));
+    setExercises(updated);
+    showToast(`Tracking weights in ${newUnit.toUpperCase()}`);
+  };
+
+  const toggleSetUnit = (exIdx, sIdx) => {
+    const updated = [...exercises];
+    const currentUnit = updated[exIdx].sets[sIdx].weightUnit || globalUnit || 'kg';
+    const nextUnit = currentUnit === 'kg' ? 'lbs' : 'kg';
+    updated[exIdx].sets[sIdx].weightUnit = nextUnit;
+    setExercises(updated);
+  };
+
+  const toggleExerciseUnit = (exIdx) => {
+    const updated = [...exercises];
+    const currentUnit = updated[exIdx].sets[0]?.weightUnit || globalUnit || 'kg';
+    const nextUnit = currentUnit === 'kg' ? 'lbs' : 'kg';
+    updated[exIdx].sets.forEach(s => {
+      s.weightUnit = nextUnit;
+    });
+    setExercises(updated);
+    showToast(`Switched ${updated[exIdx].name} sets to ${nextUnit.toUpperCase()}`);
   };
 
   const removeSet = (exIdx, sIdx) => {
@@ -277,12 +317,19 @@ export function SessionWorkoutLoggerModal({
     showToast(`Movement swapped to "${swapName.trim()}"`);
   };
 
-  // Dynamic Volume Calculator
+  // Dynamic Volume Calculator (normalizes lbs to kg so volume is consistent)
   const totalVolumeKg = exercises.reduce((sum, ex) => {
     return sum + (ex.sets || []).reduce((sSum, s) => {
-      return s.completed ? sSum + ((Number(s.weightKg) || 0) * (Number(s.reps) || 0)) : sSum;
+      if (!s.completed) return sSum;
+      const reps = Number(s.reps) || 0;
+      const rawWeight = Number(s.weightKg) || 0;
+      const unit = s.weightUnit || globalUnit || 'kg';
+      const weightInKg = unit === 'lbs' ? (rawWeight / 2.20462) : rawWeight;
+      return sSum + (weightInKg * reps);
     }, 0);
   }, 0);
+
+  const totalVolumeLbs = Math.round(totalVolumeKg * 2.20462);
 
   const completedSetsCount = exercises.reduce((sum, ex) => {
     return sum + (ex.sets || []).filter(s => s.completed).length;
@@ -303,9 +350,14 @@ export function SessionWorkoutLoggerModal({
       setSaving(true);
       const activeProg = clientPrograms.find(p => p.id === selectedProgramId);
 
-      const calculatedVolume = currentExercises.reduce((sum, ex) => {
+      const calculatedVolumeKg = currentExercises.reduce((sum, ex) => {
         return sum + (ex.sets || []).reduce((sSum, s) => {
-          return s.completed ? sSum + ((Number(s.weightKg) || 0) * (Number(s.reps) || 0)) : sSum;
+          if (!s.completed) return sSum;
+          const reps = Number(s.reps) || 0;
+          const rawWeight = Number(s.weightKg) || 0;
+          const unit = s.weightUnit || globalUnit || 'kg';
+          const weightInKg = unit === 'lbs' ? (rawWeight / 2.20462) : rawWeight;
+          return sSum + (weightInKg * reps);
         }, 0);
       }, 0);
 
@@ -320,6 +372,7 @@ export function SessionWorkoutLoggerModal({
         programName: activeProg ? activeProg.name : 'Custom Program',
         dayNumber: selectedDayNumber || 1,
         dayName: saveWorkoutName,
+        weightUnit: globalUnit,
         focus: activeProg?.days?.find(d => d.dayNumber === selectedDayNumber)?.focus || '',
         exercises: currentExercises.map((ex, idx) => ({
           id: ex.id || `ex-${idx}`,
@@ -327,13 +380,20 @@ export function SessionWorkoutLoggerModal({
           prescribedText: ex.prescribedText || '',
           alternative: ex.alternative || '',
           notes: (ex.notes || '').trim(),
-          sets: ex.sets.map(s => ({
-            setNum: s.setNum,
-            weightKg: Number(s.weightKg) || 0,
-            reps: s.reps !== '' && s.reps !== null && !isNaN(Number(s.reps)) ? Number(s.reps) : 0,
-            seconds: s.seconds !== '' && s.seconds !== null && !isNaN(Number(s.seconds)) ? Number(s.seconds) : 0,
-            completed: !!s.completed
-          }))
+          sets: ex.sets.map(s => {
+            const rawWeight = Number(s.weightKg) || 0;
+            const unit = s.weightUnit || globalUnit || 'kg';
+            const normKg = unit === 'lbs' ? Number((rawWeight / 2.20462).toFixed(1)) : rawWeight;
+            return {
+              setNum: s.setNum,
+              weight: rawWeight,
+              weightKg: normKg,
+              weightUnit: unit,
+              reps: s.reps !== '' && s.reps !== null && !isNaN(Number(s.reps)) ? Number(s.reps) : 0,
+              seconds: s.seconds !== '' && s.seconds !== null && !isNaN(Number(s.seconds)) ? Number(s.seconds) : 0,
+              completed: !!s.completed
+            };
+          })
         })),
         finisher: saveFinisher ? {
           title: saveFinisher.title || saveFinisher.format || 'Conditioning Finisher',
@@ -342,7 +402,8 @@ export function SessionWorkoutLoggerModal({
         } : null,
         sessionNotes: saveSessionNotes,
         rpe: saveRpe,
-        totalVolumeKg: calculatedVolume,
+        totalVolumeKg: Math.round(calculatedVolumeKg),
+        totalVolumeLbs: Math.round(calculatedVolumeKg * 2.20462),
         completedAt: new Date().toISOString()
       };
 
@@ -767,7 +828,36 @@ RPE: 8`}
             </div>
 
             {/* Live Volume & Sets summary */}
-            <div className="flex items-center space-x-3 text-xs">
+            <div className="flex items-center space-x-3 text-xs flex-wrap gap-y-2">
+              {/* Unit Toggle: KG vs LBS */}
+              <div className="bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-xl flex items-center space-x-1.5">
+                <span className="text-slate-400 text-[10px] uppercase font-bold pr-0.5">Unit:</span>
+                <button
+                  type="button"
+                  onClick={() => handleGlobalUnitChange('kg')}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition ${
+                    globalUnit === 'kg'
+                      ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Track weights in Kilograms (kg)"
+                >
+                  KG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleGlobalUnitChange('lbs')}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition ${
+                    globalUnit === 'lbs'
+                      ? 'bg-amber-400 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Track weights in Pounds (lbs)"
+                >
+                  LBS
+                </button>
+              </div>
+
               <div className="bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
                 <span className="text-slate-400 text-[10px] uppercase font-bold block">Sets Done</span>
                 <span className="text-emerald-400 font-bold font-mono text-sm">
@@ -778,6 +868,9 @@ RPE: 8`}
                 <span className="text-slate-400 text-[10px] uppercase font-bold block">Total Volume</span>
                 <span className="text-white font-bold font-mono text-sm">
                   {totalVolumeKg.toLocaleString()} kg
+                  <span className="text-slate-400 text-[11px] font-normal ml-1">
+                    ({totalVolumeLbs.toLocaleString()} lbs)
+                  </span>
                 </span>
               </div>
             </div>
@@ -811,7 +904,20 @@ RPE: 8`}
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-1.5 self-end sm:self-auto">
+                  <div className="flex items-center space-x-1.5 self-end sm:self-auto flex-wrap">
+                    {/* All sets unit quick toggle for this exercise */}
+                    <button
+                      type="button"
+                      onClick={() => toggleExerciseUnit(exIdx)}
+                      title={`Click to switch all sets in ${ex.name} to ${(ex.sets?.[0]?.weightUnit || globalUnit || 'kg') === 'kg' ? 'LBS' : 'KG'}`}
+                      className="px-2 py-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1 transition"
+                    >
+                      <span className="text-slate-500 font-normal text-[10px]">All:</span>
+                      <span className={`font-bold ${(ex.sets?.[0]?.weightUnit || globalUnit || 'kg') === 'lbs' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {(ex.sets?.[0]?.weightUnit || globalUnit || 'kg').toUpperCase()}
+                      </span>
+                    </button>
+
                     {/* Swap movement button */}
                     <button
                       type="button"
@@ -876,7 +982,7 @@ RPE: 8`}
                     <thead className="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-800">
                       <tr>
                         <th className="py-2 px-3 w-16 text-center">Set</th>
-                        <th className="py-2 px-3 w-28 text-center">Weight (kg)</th>
+                        <th className="py-2 px-3 w-32 text-center">Weight</th>
                         <th className="py-2 px-3 text-center">Reps / Seconds</th>
                         <th className="py-2 px-3 w-24 text-center">Done?</th>
                         <th className="py-2 px-3 text-right w-12"></th>
@@ -892,15 +998,26 @@ RPE: 8`}
                             Set {set.setNum}
                           </td>
                           <td className="py-2 px-3 text-center">
-                            <div className="inline-flex items-center space-x-1">
+                            <div className="inline-flex items-center space-x-1 justify-center">
                               <input
                                 type="number"
                                 step="any"
                                 value={set.weightKg}
                                 onChange={(e) => handleSetChange(exIdx, sIdx, 'weightKg', e.target.value)}
-                                className="w-20 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-lg px-2.5 py-1 text-center font-mono font-bold text-emerald-400 text-xs outline-none"
+                                className="w-16 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-lg px-2 py-1 text-center font-mono font-bold text-emerald-400 text-xs outline-none"
                               />
-                              <span className="text-slate-500 text-[11px]">kg</span>
+                              <button
+                                type="button"
+                                onClick={() => toggleSetUnit(exIdx, sIdx)}
+                                title="Click to toggle between kg and lbs for this set"
+                                className={`px-1.5 py-0.5 rounded font-extrabold text-[10px] uppercase transition cursor-pointer shadow-sm ${
+                                  (set.weightUnit || globalUnit || 'kg') === 'lbs'
+                                    ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                                }`}
+                              >
+                                {set.weightUnit || globalUnit || 'kg'}
+                              </button>
                             </div>
                           </td>
                           <td className="py-2 px-3 text-center">
