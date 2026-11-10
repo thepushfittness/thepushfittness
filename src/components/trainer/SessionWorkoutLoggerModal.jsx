@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { parseNotepadWorkout, convertWorkoutToNotepadText } from './workoutUtils';
 import { 
   Dumbbell, 
   Calendar, 
@@ -20,7 +21,11 @@ import {
   Check,
   Zap,
   Repeat,
-  Info
+  Info,
+  FileText,
+  ClipboardList,
+  Copy,
+  RotateCcw
 } from 'lucide-react';
 
 export function SessionWorkoutLoggerModal({
@@ -29,6 +34,7 @@ export function SessionWorkoutLoggerModal({
   client,
   programs = [],
   readOnly = false,
+  initialMode = 'notepad',
   onClose,
   onSuccess
 }) {
@@ -40,6 +46,10 @@ export function SessionWorkoutLoggerModal({
   const [clientPrograms, setClientPrograms] = useState(programs || []);
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [selectedDayNumber, setSelectedDayNumber] = useState(null);
+
+  // Active Logger Mode: 'notepad' (freeform notes paste) vs 'template' (assigned day routine & interactive set table)
+  const [activeMode, setActiveMode] = useState(initialMode || 'notepad');
+  const [notepadText, setNotepadText] = useState('');
 
   // Live logged exercises state
   const [workoutName, setWorkoutName] = useState('');
@@ -112,6 +122,8 @@ export function SessionWorkoutLoggerModal({
 
       setExercises(loadedExs);
       setIsEditingExisting(!readOnly);
+      setActiveMode('template');
+      setNotepadText(convertWorkoutToNotepadText(wd));
       return;
     }
 
@@ -119,9 +131,9 @@ export function SessionWorkoutLoggerModal({
     const activeProg = availPrograms.find(p => p.status === 'active') || availPrograms[0];
     if (activeProg) {
       setSelectedProgramId(activeProg.id);
-      // Auto-select Day 1 by default
+      // Auto-select Day 1 by default without toast
       if (activeProg.days && activeProg.days.length > 0) {
-        selectProgramDay(activeProg, activeProg.days[0]);
+        selectProgramDay(activeProg, activeProg.days[0], false);
       }
     } else {
       // Blank starter
@@ -131,6 +143,7 @@ export function SessionWorkoutLoggerModal({
 
     setSessionNotes(session.notes || '');
     setIsEditingExisting(!readOnly);
+    setActiveMode(initialMode || 'notepad');
   };
 
   const createBlankExercise = (num = 1) => ({
@@ -146,7 +159,7 @@ export function SessionWorkoutLoggerModal({
     ]
   });
 
-  const selectProgramDay = (prog, day) => {
+  const selectProgramDay = (prog, day, showNotification = true) => {
     setSelectedDayNumber(day.dayNumber);
     setWorkoutName(`${day.name || `Day ${day.dayNumber}`} (${day.focus || prog.name})`);
     setFinisher(day.conditioning || null);
@@ -181,13 +194,15 @@ export function SessionWorkoutLoggerModal({
     });
 
     setExercises(loadedExs.length > 0 ? loadedExs : [createBlankExercise(1)]);
-    showToast(`Loaded ${day.name || `Day ${day.dayNumber}`} (${loadedExs.length} exercises)`);
+    if (showNotification) {
+      showToast(`Loaded ${day.name || `Day ${day.dayNumber}`} (${loadedExs.length} exercises)`);
+    }
   };
 
   const handleDayButtonClick = (day) => {
     const activeProg = clientPrograms.find(p => p.id === selectedProgramId) || clientPrograms[0];
     if (activeProg) {
-      selectProgramDay(activeProg, day);
+      selectProgramDay(activeProg, day, true);
     }
   };
 
@@ -270,9 +285,10 @@ export function SessionWorkoutLoggerModal({
   const totalSetsCount = exercises.reduce((sum, ex) => sum + (ex.sets || []).length, 0);
 
   // Save & Complete or Draft Handler
-  const handleSaveSessionWorkout = async (shouldComplete = true) => {
+  const handleSaveSessionWorkout = async (shouldComplete = true, overrideData = null) => {
     if (!session) return;
-    if (exercises.length === 0) {
+    const currentExercises = overrideData?.exercises || exercises;
+    if (!currentExercises || currentExercises.length === 0) {
       showToast('Please add at least one exercise', 'error');
       return;
     }
@@ -281,13 +297,25 @@ export function SessionWorkoutLoggerModal({
       setSaving(true);
       const activeProg = clientPrograms.find(p => p.id === selectedProgramId);
 
+      const calculatedVolume = currentExercises.reduce((sum, ex) => {
+        return sum + (ex.sets || []).reduce((sSum, s) => {
+          return s.completed ? sSum + ((Number(s.weightKg) || 0) * (Number(s.reps) || 0)) : sSum;
+        }, 0);
+      }, 0);
+
+      const saveFinisher = overrideData ? overrideData.finisher : finisher;
+      const saveFinisherNotes = overrideData ? (overrideData.finisher?.notes || overrideData.finisher?.description || '') : finisherNotes;
+      const saveSessionNotes = (overrideData?.sessionNotes !== undefined ? overrideData.sessionNotes : sessionNotes).trim();
+      const saveRpe = Number(overrideData?.rpe || sessionRpe) || 8;
+      const saveWorkoutName = overrideData?.workoutName || workoutName || 'Studio Coaching Session Workout';
+
       const workoutDonePayload = {
         programId: selectedProgramId || null,
         programName: activeProg ? activeProg.name : 'Custom Program',
         dayNumber: selectedDayNumber || 1,
-        dayName: workoutName,
+        dayName: saveWorkoutName,
         focus: activeProg?.days?.find(d => d.dayNumber === selectedDayNumber)?.focus || '',
-        exercises: exercises.map((ex, idx) => ({
+        exercises: currentExercises.map((ex, idx) => ({
           id: ex.id || `ex-${idx}`,
           name: ex.name,
           prescribedText: ex.prescribedText || '',
@@ -300,20 +328,20 @@ export function SessionWorkoutLoggerModal({
             completed: !!s.completed
           }))
         })),
-        finisher: finisher ? {
-          title: finisher.title || finisher.format || 'Conditioning Finisher',
-          description: finisher.description || '',
-          notes: finisherNotes.trim()
+        finisher: saveFinisher ? {
+          title: saveFinisher.title || saveFinisher.format || 'Conditioning Finisher',
+          description: saveFinisher.description || '',
+          notes: saveFinisherNotes.trim()
         } : null,
-        sessionNotes: sessionNotes.trim(),
-        rpe: Number(sessionRpe) || 8,
-        totalVolumeKg,
+        sessionNotes: saveSessionNotes,
+        rpe: saveRpe,
+        totalVolumeKg: calculatedVolume,
         completedAt: new Date().toISOString()
       };
 
       const sessionUpdates = {
         workoutDone: workoutDonePayload,
-        notes: sessionNotes.trim() || session.notes
+        notes: saveSessionNotes || session.notes
       };
 
       if (shouldComplete) {
@@ -323,7 +351,7 @@ export function SessionWorkoutLoggerModal({
       const updatedSession = await api.updateSession(session.id, sessionUpdates);
 
       if (shouldComplete) {
-        showToast(`✓ Session completed & workout logged! ${totalVolumeKg.toLocaleString()} kg total volume recorded.`);
+        showToast(`✓ Session completed & workout logged! ${calculatedVolume.toLocaleString()} kg total volume recorded.`);
       } else {
         showToast('Workout progress draft saved!');
       }
@@ -335,6 +363,40 @@ export function SessionWorkoutLoggerModal({
       showToast(err.message || 'Failed to save workout session', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Convert notepad text into live exercises and review/complete
+  const handleConvertNotepadToWorkout = (shouldCompleteImmediately = false) => {
+    if (!notepadText || !notepadText.trim()) {
+      showToast('Please type or paste your workout notes first', 'error');
+      return;
+    }
+
+    const parsed = parseNotepadWorkout(notepadText);
+    if (!parsed.exercises || parsed.exercises.length === 0) {
+      showToast('Could not find any exercises in the notes. Check format tips below.', 'error');
+      return;
+    }
+
+    setWorkoutName(parsed.workoutName || workoutName || 'Studio Workout Log');
+    setExercises(parsed.exercises);
+    if (parsed.finisher) {
+      setFinisher(parsed.finisher);
+      setFinisherNotes(parsed.finisher.notes || parsed.finisher.description || '');
+    }
+    if (parsed.sessionNotes) {
+      setSessionNotes(parsed.sessionNotes);
+    }
+    if (parsed.rpe) {
+      setSessionRpe(parsed.rpe);
+    }
+
+    if (shouldCompleteImmediately) {
+      handleSaveSessionWorkout(true, parsed);
+    } else {
+      setActiveMode('template');
+      showToast(`✓ Converted ${parsed.exercises.length} movements into workout log! Review sets below.`);
     }
   };
 
@@ -412,83 +474,272 @@ export function SessionWorkoutLoggerModal({
           </div>
         </div>
 
-        {/* STEP 1: SELECT WORKOUT TEMPLATE DAY */}
-        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">
-                Step 1: Choose Routine for Today's Session
-              </span>
-              <h4 className="text-sm font-bold text-white mt-0.5">
-                {activeProg ? activeProg.name : 'No Workout Plan Assigned'}
-              </h4>
+        {/* MODE SELECTION TABS: NOTEPAD vs TEMPLATE */}
+        <div className="flex items-center space-x-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveMode('notepad')}
+            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition ${
+              activeMode === 'notepad'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25 ring-1 ring-emerald-400'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>📝 Quick Notes Style Pad (Copy-Paste)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMode('template')}
+            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition ${
+              activeMode === 'template'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25 ring-1 ring-emerald-400'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Dumbbell className="w-4 h-4" />
+            <span>📋 Assigned Day Routine Template & Sets</span>
+          </button>
+        </div>
+
+        {/* NOTEPAD MODE CONTENT */}
+        {activeMode === 'notepad' && (
+          <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-4 animate-fade-in shadow-xl">
+            {/* Notepad Header / Quick Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-850 pb-3">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    Notes Style Workout Log
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    Smart Converter
+                  </span>
+                </div>
+                <p className="text-slate-400 text-xs mt-0.5">
+                  Copy-paste freeform notes directly from your phone (Apple Notes, Keep, WhatsApp), then convert to a workout log.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                {activeProg && activeProg.days?.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const dayToUse = activeProg.days.find(d => d.dayNumber === selectedDayNumber) || activeProg.days[0];
+                      const text = convertWorkoutToNotepadText(dayToUse);
+                      setNotepadText(text);
+                      showToast(`Loaded ${dayToUse.name || 'Day Plan'} into notepad`);
+                    }}
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition"
+                    title="Load client's assigned day plan routine into text to tweak"
+                  >
+                    <ClipboardList className="w-3.5 h-3.5" />
+                    <span>Load Assigned Day Plan</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotepadText(
+`Incline DB Press 22kg 12, 10, 10
+Lat Pulldown 55kg 12, 12, 10 - strict squeeze
+Goblet Squat 24kg 15, 12, 12
+Finisher: 10 mins Row 500m intervals
+Notes: Client pushed hard on incline bench, great shoulder control.
+RPE: 8`
+                    );
+                    showToast('Sample workout notes loaded!');
+                  }}
+                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Paste Sample</span>
+                </button>
+
+                {notepadText && (
+                  <button
+                    type="button"
+                    onClick={() => setNotepadText('')}
+                    className="px-2.5 py-1 text-slate-400 hover:text-red-400 rounded-xl text-xs transition"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
-            {clientPrograms.length > 1 && (
-              <div className="flex items-center space-x-2">
-                <span className="text-slate-400 text-xs">Program:</span>
-                <select
-                  value={selectedProgramId}
-                  onChange={(e) => {
-                    setSelectedProgramId(e.target.value);
-                    const chosen = clientPrograms.find(p => p.id === e.target.value);
-                    if (chosen && chosen.days && chosen.days.length > 0) {
-                      selectProgramDay(chosen, chosen.days[0]);
-                    }
-                  }}
-                  className="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1 text-white text-xs"
+            {/* Textarea */}
+            <div className="relative">
+              <textarea
+                rows={11}
+                value={notepadText}
+                onChange={(e) => setNotepadText(e.target.value)}
+                placeholder={`Paste your workout notes here, e.g.:
+
+Incline DB Press 22kg 12, 10, 10
+Lat Pulldown 55kg 12, 12, 10 - strict squeeze
+Goblet Squat 24kg 15, 12, 12
+Finisher: 10 mins Row 500m intervals
+Notes: Client pushed hard on incline bench, great shoulder control.
+RPE: 8`}
+                className="w-full bg-slate-900/95 border-2 border-slate-750 focus:border-emerald-500 text-slate-100 placeholder:text-slate-500 font-mono text-xs sm:text-[13px] rounded-2xl p-4 leading-relaxed outline-none transition shadow-inner"
+              />
+            </div>
+
+            {/* Primary Convert Buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <div className="text-[11px] text-slate-400 flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>Click <strong>Convert</strong> to parse into sets table & review volume.</span>
+              </div>
+
+              <div className="flex items-center space-x-2.5 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => handleConvertNotepadToWorkout(false)}
+                  className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-xl text-xs transition flex items-center space-x-2 shadow-lg shadow-emerald-500/20 active:scale-95"
                 >
-                  {clientPrograms.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                  <Sparkles className="w-4 h-4 text-slate-950" />
+                  <span>✨ Convert to Workout Log & Review Sets</span>
+                </button>
+
+                {session.status !== 'completed' && (
+                  <button
+                    type="button"
+                    onClick={() => handleConvertNotepadToWorkout(true)}
+                    disabled={saving}
+                    className="px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition flex items-center space-x-2 shadow-lg shadow-cyan-500/20 active:scale-95 disabled:opacity-50"
+                    title="Convert notes and mark session completed in 1 tap"
+                  >
+                    {saving ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
+                    ) : (
+                      <Zap className="w-4 h-4 text-slate-950" />
+                    )}
+                    <span>⚡ Convert & Complete Now</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Format Help Guide */}
+            <div className="p-3 bg-slate-900/70 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <span className="font-bold text-slate-300 block text-xs">💡 Supported Note Formats:</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-slate-400 pt-0.5">
+                <div>• <strong className="text-white">Comma sets:</strong> <code>Incline DB 22kg 12, 10, 10</code></div>
+                <div>• <strong className="text-white">Variable weight:</strong> <code>Bench 60kg x 10, 65kg x 8</code></div>
+                <div>• <strong className="text-white">Standard sets:</strong> <code>Squats 80kg 3x10</code> or <code>3x8 BW</code></div>
+                <div>• <strong className="text-white">Notes & Cues:</strong> <code>Lat Pulldown 55kg 3x10 - strict squeeze</code></div>
+                <div>• <strong className="text-white">Finisher:</strong> <code>Finisher: 10 mins Row 500m intervals</code></div>
+                <div>• <strong className="text-white">Feedback:</strong> <code>Notes: Client hit PR on bench! RPE: 8</code></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 1: SELECT WORKOUT TEMPLATE DAY (TEMPLATE MODE) */}
+        {activeMode === 'template' && (
+          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">
+                  Step 1: Choose Routine for Today's Session
+                </span>
+                <h4 className="text-sm font-bold text-white mt-0.5">
+                  {activeProg ? activeProg.name : 'No Workout Plan Assigned'}
+                </h4>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentData = {
+                      workoutName,
+                      exercises,
+                      finisher,
+                      sessionNotes,
+                      rpe: sessionRpe
+                    };
+                    setNotepadText(convertWorkoutToNotepadText(currentData));
+                    setActiveMode('notepad');
+                  }}
+                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-850 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-semibold flex items-center space-x-1 transition"
+                  title="Edit current exercises in text notepad"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Edit in Notepad</span>
+                </button>
+
+                {clientPrograms.length > 1 && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-slate-400 text-xs">Program:</span>
+                    <select
+                      value={selectedProgramId}
+                      onChange={(e) => {
+                        setSelectedProgramId(e.target.value);
+                        const chosen = clientPrograms.find(p => p.id === e.target.value);
+                        if (chosen && chosen.days && chosen.days.length > 0) {
+                          selectProgramDay(chosen, chosen.days[0]);
+                        }
+                      }}
+                      className="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1 text-white text-xs"
+                    >
+                      {clientPrograms.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Day selection buttons */}
+            {programDays.length > 0 ? (
+              <div className="space-y-1.5">
+                <span className="text-[11px] text-slate-400">Select which day was performed:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                  {programDays.map((day) => {
+                    const isSelected = selectedDayNumber === day.dayNumber;
+                    return (
+                      <button
+                        key={day.id || day.dayNumber}
+                        type="button"
+                        onClick={() => handleDayButtonClick(day)}
+                        className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-md ring-1 ring-emerald-500'
+                            : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-850'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs text-white">Day {day.dayNumber}</span>
+                            <span className="text-[10px] text-emerald-400 font-mono">{day.exercises?.length || 0} ex</span>
+                          </div>
+                          <p className="text-[11px] font-medium text-emerald-300/90 truncate mt-0.5">{day.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">{day.focus}</p>
+                        </div>
+                        {isSelected && (
+                          <div className="flex items-center space-x-1 text-emerald-400 text-[10px] font-bold mt-2 pt-1 border-t border-emerald-500/20">
+                            <Check className="w-3 h-3" />
+                            <span>Active Log</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-3 text-slate-400 text-xs">
+                <p>No periodized days found in client's program. You can log exercises freely below.</p>
               </div>
             )}
           </div>
-
-          {/* Day selection buttons */}
-          {programDays.length > 0 ? (
-            <div className="space-y-1.5">
-              <span className="text-[11px] text-slate-400">Select which day was performed:</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                {programDays.map((day) => {
-                  const isSelected = selectedDayNumber === day.dayNumber;
-                  return (
-                    <button
-                      key={day.id || day.dayNumber}
-                      type="button"
-                      onClick={() => handleDayButtonClick(day)}
-                      className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
-                        isSelected
-                          ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-md ring-1 ring-emerald-500'
-                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-850'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-white">Day {day.dayNumber}</span>
-                          <span className="text-[10px] text-emerald-400 font-mono">{day.exercises?.length || 0} ex</span>
-                        </div>
-                        <p className="text-[11px] font-medium text-emerald-300/90 truncate mt-0.5">{day.name}</p>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{day.focus}</p>
-                      </div>
-                      {isSelected && (
-                        <div className="flex items-center space-x-1 text-emerald-400 text-[10px] font-bold mt-2 pt-1 border-t border-emerald-500/20">
-                          <Check className="w-3 h-3" />
-                          <span>Active Log</span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-3 text-slate-400 text-xs">
-              <p>No periodized days found in client's program. You can log exercises freely below.</p>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* STEP 2: LIVE EXERCISE LOGGING TABLE */}
         <div className="space-y-4">

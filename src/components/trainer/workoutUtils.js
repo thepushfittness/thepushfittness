@@ -152,3 +152,307 @@ export function parseNotepadText(rawText) {
 
   return { exercises, conditioning };
 }
+
+// Full notes parser for live coaching session logging
+export function parseNotepadWorkout(rawText) {
+  if (!rawText || !rawText.trim()) {
+    return {
+      workoutName: '',
+      exercises: [],
+      finisher: null,
+      sessionNotes: '',
+      rpe: 8
+    };
+  }
+
+  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+  let workoutName = '';
+  let sessionNotes = '';
+  let rpe = 8;
+  let finisher = null;
+  const exercises = [];
+
+  let currentExercise = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // 1. Check for RPE line
+    const rpeMatch = line.match(/^(?:rpe|intensity)[:\s]+([0-9]+(?:\.[0-9]+)?)/i);
+    if (rpeMatch) {
+      rpe = Math.round(parseFloat(rpeMatch[1])) || 8;
+      continue;
+    }
+
+    // 2. Check for Session Notes line
+    const notesMatch = line.match(/^(?:session\s*notes|coach\s*notes|session\s*summary|notes|summary|feedback)[:\s]+(.*)/i);
+    if (notesMatch) {
+      const extractedNote = notesMatch[1].trim();
+      sessionNotes = (sessionNotes ? sessionNotes + ' ' : '') + extractedNote;
+      continue;
+    }
+
+    // 3. Check for Finisher / Conditioning line
+    const condMatch = line.match(/^(?:conditioning|finisher|metcon|circuit|amrap|emom|wod)[:\s]+(.*)/i);
+    if (condMatch) {
+      const rest = condMatch[1].trim();
+      const durationMatch = rest.match(/(\d+\s*(?:min|mins|minutes|rounds|sec|secs))/i);
+      finisher = {
+        format: rest.split(/[:;,]/)[0]?.trim() || 'Conditioning Finisher',
+        title: rest.split(/[:;,]/)[0]?.trim() || "Today's Finisher",
+        duration: durationMatch ? durationMatch[1] : '10-12 mins',
+        description: rest,
+        notes: '',
+        isDailyVariable: true
+      };
+      continue;
+    }
+
+    // 4. Check for Header / Title line on first line or lines starting with Day / Routine / Workout
+    const isExplicitHeader = line.match(/^(?:day\s*\d+|routine|workout\s*name)[:\s]+(.*)/i);
+    const isFirstLineHeader = (i === 0 && !line.match(/\d+\s*(?:kg|lbs|reps|[xX*])/i) && line.match(/^(?:day\s*\d+|push|pull|legs|upper|lower|full\s*body|chest|back|shoulders|arms|workout|routine|session)/i));
+
+    if (isExplicitHeader || isFirstLineHeader) {
+      const cleanHeader = isExplicitHeader ? isExplicitHeader[1].trim() : line;
+      workoutName = cleanHeader.replace(/^[#\-=*]+\s*/, '').replace(/[:,-]+$/, '').trim();
+      continue;
+    }
+
+    // 5. Check for multi-line set syntax under current exercise, e.g.:
+    // "Set 1: 60kg x 10", "60kg x 10", "10 reps @ 60kg", "10 x 60kg"
+    const singleSetMatch = line.match(/^(?:set\s*\d+[:\s]+)?([0-9.]+)\s*(?:kg|kilos|lbs)?\s*([xX*@])\s*([0-9]+)\s*(?:reps?)?/i)
+      || line.match(/^(?:set\s*\d+[:\s]+)?([0-9]+)\s*reps?\s*[@xX*]\s*([0-9.]+)\s*(?:kg|kilos|lbs)?/i);
+
+    if (currentExercise && singleSetMatch) {
+      let weight = parseFloat(singleSetMatch[1]);
+      let reps = parseInt(singleSetMatch[3] || singleSetMatch[2], 10);
+      
+      if (line.match(/reps?\s*[@]/i)) {
+        reps = parseInt(singleSetMatch[1], 10);
+        weight = parseFloat(singleSetMatch[2]);
+      } else if (singleSetMatch[2] === '@') {
+        weight = parseFloat(singleSetMatch[3]);
+        reps = parseInt(singleSetMatch[1], 10);
+      }
+
+      currentExercise.sets.push({
+        setNum: currentExercise.sets.length + 1,
+        weightKg: isNaN(weight) ? (currentExercise.sets[0]?.weightKg || 50) : weight,
+        reps: isNaN(reps) ? (currentExercise.sets[0]?.reps || 10) : reps,
+        completed: true
+      });
+      continue;
+    }
+
+    // 6. Process general exercise line
+    let cleanLine = line.replace(/^(\d+[\.\)]|\-|\*)\s*/, '');
+    let exerciseNote = '';
+
+    // Extract inline notes after ' - ' or ' // '
+    if (cleanLine.includes(' - ')) {
+      const parts = cleanLine.split(' - ');
+      cleanLine = parts[0].trim();
+      exerciseNote = parts.slice(1).join(' - ').trim();
+    } else if (cleanLine.includes(' // ')) {
+      const parts = cleanLine.split(' // ');
+      cleanLine = parts[0].trim();
+      exerciseNote = parts.slice(1).join(' // ').trim();
+    }
+
+    // 7. Check if line contains variable sets on same line:
+    // "Bench Press: 60kg x 10, 65kg x 8, 70kg x 6"
+    const multiSetWeightPattern = /([0-9.]+)\s*(?:kg|lbs)?\s*[xX*]\s*([0-9]+)/g;
+    const allMatches = [...cleanLine.matchAll(multiSetWeightPattern)];
+    if (allMatches.length >= 2) {
+      const firstIndex = allMatches[0].index;
+      let exName = cleanLine.substring(0, firstIndex).replace(/[:,-]+$/, '').trim() || 'Exercise';
+      const sets = allMatches.map((m, idx) => ({
+        setNum: idx + 1,
+        weightKg: parseFloat(m[1]) || 50,
+        reps: parseInt(m[2], 10) || 10,
+        completed: true
+      }));
+
+      currentExercise = {
+        id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
+        name: exName,
+        prescribedText: `${sets.length} sets logged (${sets.map(s => `${s.weightKg}kg×${s.reps}`).join(', ')})`,
+        notes: exerciseNote,
+        alternative: '',
+        sets
+      };
+      exercises.push(currentExercise);
+      continue;
+    }
+
+    // 8. Check for comma-separated or slash-separated reps format:
+    // e.g., "Incline DB Press 22kg 12, 10, 10" or "Lat Pulldown 55kg 12, 12, 10" or "Lateral Raises 4kg 15/15/14"
+    const commaRepsMatch = cleanLine.match(/(.*?)\s+([0-9.]+\s*(?:kg|kilos|lbs|bw)?)\s*[:\s]+([0-9]+(?:\s*[,/]\s*[0-9]+)+)/i);
+    if (commaRepsMatch) {
+      const exName = commaRepsMatch[1].replace(/[:,-]+$/, '').trim() || 'Exercise';
+      const rawWeight = commaRepsMatch[2].toLowerCase().replace(/[^0-9.]/g, '');
+      const weightNum = parseFloat(rawWeight) || (commaRepsMatch[2].includes('bw') ? 0 : 50);
+      const repsArray = commaRepsMatch[3].split(/[,/]/).map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
+
+      const sets = repsArray.map((r, idx) => ({
+        setNum: idx + 1,
+        weightKg: weightNum,
+        reps: r,
+        completed: true
+      }));
+
+      currentExercise = {
+        id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
+        name: exName,
+        prescribedText: `${sets.length} sets × ${repsArray.join(', ')} @ ${weightNum} kg`,
+        notes: exerciseNote,
+        alternative: '',
+        sets
+      };
+      exercises.push(currentExercise);
+      continue;
+    }
+
+    // 9. Check for standard "3x10 @ 60kg" or "60kg 3x10" or "Bench Press 4x8-10 60kg"
+    let targetWeight = 50;
+    const parenWeight = cleanLine.match(/\(([0-9.]+)\s*(?:kg|lbs)?\)/i);
+    if (parenWeight) {
+      targetWeight = parseFloat(parenWeight[1]) || 50;
+      cleanLine = cleanLine.replace(/\([^)]+\)/, '').trim();
+    } else {
+      const atMatch = cleanLine.match(/[@\s]+([0-9.]+)\s*(?:kg|kilos|lbs)\b/i);
+      if (atMatch) {
+        targetWeight = parseFloat(atMatch[1]) || 50;
+        cleanLine = cleanLine.replace(/[@\s]+[0-9.]+\s*(?:kg|kilos|lbs)\b/i, '').trim();
+      } else if (cleanLine.toLowerCase().includes(' bw') || cleanLine.toLowerCase().includes('bodyweight')) {
+        targetWeight = 0;
+        cleanLine = cleanLine.replace(/\b(bodyweight|bw)\b/i, '').trim();
+      }
+    }
+
+    // Check for NxM sets x reps: "3x10", "4 x 8-10", "3*12"
+    const setsRepsMatch = cleanLine.match(/[:\s]+(\d+)\s*[xX*]\s*([0-9]+)(?:-[0-9]+)?/);
+    if (setsRepsMatch) {
+      const numSets = Math.min(Math.max(parseInt(setsRepsMatch[1], 10) || 3, 1), 10);
+      const reps = parseInt(setsRepsMatch[2], 10) || 10;
+      const exName = cleanLine.substring(0, setsRepsMatch.index).replace(/[:,-]+$/, '').trim() || 'Exercise';
+
+      const sets = Array.from({ length: numSets }).map((_, idx) => ({
+        setNum: idx + 1,
+        weightKg: targetWeight,
+        reps: reps,
+        completed: true
+      }));
+
+      currentExercise = {
+        id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
+        name: exName,
+        prescribedText: `${numSets} sets × ${reps} reps @ ${targetWeight} kg`,
+        notes: exerciseNote,
+        alternative: '',
+        sets
+      };
+      exercises.push(currentExercise);
+      continue;
+    }
+
+    // 10. Check if this is a header for multi-line sets (e.g. "Squat" or "Squats 80kg")
+    const trailingWeightMatch = cleanLine.match(/\s+([0-9.]+)\s*(?:kg|lbs)?$/i);
+    let finalWeight = targetWeight;
+    let exName = cleanLine;
+    if (trailingWeightMatch) {
+      finalWeight = parseFloat(trailingWeightMatch[1]) || targetWeight;
+      exName = cleanLine.substring(0, trailingWeightMatch.index).trim();
+    }
+
+    exName = exName.replace(/[:,-]+$/, '').trim();
+    if (exName && exName.length >= 2) {
+      const nextLine = lines[i + 1];
+      const nextIsSet = nextLine && (
+        nextLine.match(/^(?:set\s*\d+[:\s]+)?[0-9.]+\s*(?:kg|kilos|lbs)?\s*[xX*@]\s*[0-9]+/i) ||
+        nextLine.match(/^[0-9]+\s*reps?\s*[@xX*]\s*[0-9.]+/i)
+      );
+
+      const sets = nextIsSet ? [] : [
+        { setNum: 1, weightKg: finalWeight, reps: 10, completed: true },
+        { setNum: 2, weightKg: finalWeight, reps: 10, completed: true },
+        { setNum: 3, weightKg: finalWeight, reps: 10, completed: true }
+      ];
+
+      currentExercise = {
+        id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
+        name: exName,
+        prescribedText: nextIsSet ? '' : `3 sets @ ${finalWeight} kg`,
+        notes: exerciseNote,
+        alternative: '',
+        sets
+      };
+      exercises.push(currentExercise);
+    }
+  }
+
+  // Fallback: If no exercises were parsed, return a blank starter
+  if (exercises.length === 0) {
+    exercises.push({
+      id: `ex-${Date.now()}-1`,
+      name: 'Exercise 1',
+      prescribedText: '3 sets × 10 reps',
+      notes: '',
+      alternative: '',
+      sets: [
+        { setNum: 1, weightKg: 50, reps: 10, completed: true },
+        { setNum: 2, weightKg: 50, reps: 10, completed: true },
+        { setNum: 3, weightKg: 50, reps: 10, completed: true }
+      ]
+    });
+  }
+
+  return {
+    workoutName: workoutName || 'Studio Workout Log',
+    exercises,
+    finisher,
+    sessionNotes,
+    rpe
+  };
+}
+
+// Convert workout structure back to editable notepad text
+export function convertWorkoutToNotepadText(dayOrWorkout) {
+  if (!dayOrWorkout) return '';
+  const lines = [];
+  if (dayOrWorkout.name || dayOrWorkout.workoutName || dayOrWorkout.dayName) {
+    lines.push(dayOrWorkout.name || dayOrWorkout.workoutName || dayOrWorkout.dayName);
+  }
+  const exercises = dayOrWorkout.exercises || [];
+  exercises.forEach(ex => {
+    if (ex.sets && Array.isArray(ex.sets) && typeof ex.sets[0] === 'object') {
+      const weights = ex.sets.map(s => Number(s.weightKg) || 0);
+      const allSameWeight = weights.every(w => w === weights[0]);
+      if (allSameWeight && weights[0] !== undefined) {
+        const repsList = ex.sets.map(s => s.reps).join(', ');
+        lines.push(`${ex.name} ${weights[0]}kg ${repsList}${ex.notes ? ` - ${ex.notes}` : ''}`);
+      } else {
+        const setStrings = ex.sets.map(s => `${s.weightKg}kg x ${s.reps}`).join(', ');
+        lines.push(`${ex.name}: ${setStrings}${ex.notes ? ` - ${ex.notes}` : ''}`);
+      }
+    } else {
+      const targetWeight = ex.targetWeightKg ? `${ex.targetWeightKg}kg` : '50kg';
+      lines.push(`${ex.name} ${ex.sets || 3}x${ex.reps || 10} @ ${targetWeight}${ex.notes ? ` - ${ex.notes}` : ''}`);
+    }
+  });
+
+  if (dayOrWorkout.conditioning || dayOrWorkout.finisher) {
+    const fin = dayOrWorkout.conditioning || dayOrWorkout.finisher;
+    lines.push(`Finisher: ${fin.title || fin.format || 'Conditioning'}: ${fin.description || ''}`);
+  }
+
+  if (dayOrWorkout.sessionNotes || dayOrWorkout.notes) {
+    lines.push(`Notes: ${dayOrWorkout.sessionNotes || dayOrWorkout.notes}`);
+  }
+
+  if (dayOrWorkout.rpe) {
+    lines.push(`RPE: ${dayOrWorkout.rpe}`);
+  }
+
+  return lines.join('\n');
+}

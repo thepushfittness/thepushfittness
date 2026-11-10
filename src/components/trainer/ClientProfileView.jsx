@@ -227,6 +227,7 @@ export function ClientProfileView({
 
   // Live Session Workout Logger State
   const [sessionForWorkoutLogging, setSessionForWorkoutLogging] = useState(null);
+  const [workoutLoggerInitialMode, setWorkoutLoggerInitialMode] = useState('notepad');
   const [sessionForWorkoutView, setSessionForWorkoutView] = useState(null);
 
   const handleOpenChangePlan = (prog, mode = 'switch') => {
@@ -1437,12 +1438,15 @@ export function ClientProfileView({
                             {sess.status === 'scheduled' ? (
                               <>
                                 <button
-                                  onClick={() => setSessionForWorkoutLogging(sess)}
+                                  onClick={() => {
+                                    setWorkoutLoggerInitialMode('notepad');
+                                    setSessionForWorkoutLogging(sess);
+                                  }}
                                   className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-lg text-xs transition flex items-center space-x-1 shadow-sm"
-                                  title="Open workout template, log sets & weights, and complete session"
+                                  title="Open workout notes notepad or template, paste and convert to workout log, and complete session"
                                 >
-                                  <Dumbbell className="w-3.5 h-3.5" />
-                                  <span>Log & Complete</span>
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span>📝 Log & Complete</span>
                                 </button>
                                 <button
                                   onClick={() => handleQuickCompleteSession(sess.id)}
@@ -2756,6 +2760,7 @@ export function ClientProfileView({
           session={sessionForWorkoutLogging}
           client={client}
           programs={programs}
+          initialMode={workoutLoggerInitialMode}
           onClose={() => setSessionForWorkoutLogging(null)}
           onSuccess={() => {
             loadClientData();

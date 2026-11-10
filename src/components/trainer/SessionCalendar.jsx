@@ -23,7 +23,8 @@ import {
   Sparkles, 
   Check,
   Dumbbell,
-  Edit3
+  Edit3,
+  FileText
 } from 'lucide-react';
 
 const COMMON_TIMES = [
@@ -45,6 +46,7 @@ export function SessionCalendar({ onSelectClient }) {
   const [deletingSession, setDeletingSession] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [sessionForWorkoutLogging, setSessionForWorkoutLogging] = useState(null);
+  const [workoutLoggerInitialMode, setWorkoutLoggerInitialMode] = useState('notepad');
   const [sessionForWorkoutView, setSessionForWorkoutView] = useState(null);
 
   // Booking modal
@@ -453,12 +455,15 @@ export function SessionCalendar({ onSelectClient }) {
                   {sess.status === 'scheduled' ? (
                     <>
                       <button
-                        onClick={() => setSessionForWorkoutLogging(sess)}
+                        onClick={() => {
+                          setWorkoutLoggerInitialMode('notepad');
+                          setSessionForWorkoutLogging(sess);
+                        }}
                         className="w-full py-2 bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-500/20 active:scale-95 text-xs"
-                        title="Open workout day template, log sets & weights, and complete session"
+                        title="Open workout notes scratchpad or template, paste and convert to workout log, and complete session"
                       >
-                        <Dumbbell className="w-3.5 h-3.5 text-slate-950" />
-                        <span>🏋️ Log Workout & Complete Session</span>
+                        <FileText className="w-3.5 h-3.5 text-slate-950" />
+                        <span>📝 Log Workout & Complete Session</span>
                       </button>
 
                       <div className="flex items-center space-x-1.5 pt-0.5">
@@ -847,6 +852,7 @@ export function SessionCalendar({ onSelectClient }) {
           isOpen={!!sessionForWorkoutLogging}
           session={sessionForWorkoutLogging}
           client={clients.find(c => c.id === sessionForWorkoutLogging.clientId)}
+          initialMode={workoutLoggerInitialMode}
           onClose={() => setSessionForWorkoutLogging(null)}
           onSuccess={(updated) => {
             setSessions(prev => prev.map(s => s.id === updated.id ? updated : s));
