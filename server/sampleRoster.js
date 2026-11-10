@@ -1,5 +1,5 @@
-// thepushfittness - Realistic Starter Client Roster for Coach Pushkar Mayekar
-// Tailored with ₹18,000 / ₹15,000 prepaid packages, MWF/TTS auto-schedules, and session workout logs
+// thepushfittness - Starter Client Roster for Coach Pushkar Mayekar
+// Preserves verified active client Anindita Chatterjee
 
 export function getSampleRosterData() {
   const now = new Date();
@@ -20,58 +20,14 @@ export function getSampleRosterData() {
       },
       {
         id: "user-client-1",
-        email: "anindita.sen@gmail.com",
-        name: "Anindita Sen",
+        email: "anindita.chatterjee@gmail.com",
+        name: "Anindita Chatterjee",
         role: "client",
         clientId: "client-1",
         password: "client123",
         phone: "+91 98201 54321",
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
         createdAt: "2026-10-15T09:00:00.000Z"
-      },
-      {
-        id: "user-client-2",
-        email: "sarah.chen@gmail.com",
-        name: "Sarah Chen",
-        role: "client",
-        clientId: "client-2",
-        password: "client123",
-        phone: "+91 98765 12345",
-        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80",
-        createdAt: "2026-10-10T08:00:00.000Z"
-      },
-      {
-        id: "user-client-3",
-        email: "marcus.vance@gmail.com",
-        name: "Marcus Vance",
-        role: "client",
-        clientId: "client-3",
-        password: "client123",
-        phone: "+91 98334 67890",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
-        createdAt: "2026-10-05T10:00:00.000Z"
-      },
-      {
-        id: "user-client-4",
-        email: "david.miller@gmail.com",
-        name: "David Miller",
-        role: "client",
-        clientId: "client-4",
-        password: "client123",
-        phone: "+91 98112 34567",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80",
-        createdAt: "2026-10-18T14:00:00.000Z"
-      },
-      {
-        id: "user-client-5",
-        email: "priya.sharma@gmail.com",
-        name: "Priya Sharma",
-        role: "client",
-        clientId: "client-5",
-        password: "client123",
-        phone: "+91 98450 98765",
-        avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80",
-        createdAt: "2026-10-12T11:00:00.000Z"
       }
     ],
 
@@ -79,15 +35,15 @@ export function getSampleRosterData() {
       {
         id: "client-1",
         userId: "user-client-1",
-        name: "Anindita Sen",
-        email: "anindita.sen@gmail.com",
+        name: "Anindita Chatterjee",
+        email: "anindita.chatterjee@gmail.com",
         password: "client123",
         phone: "+91 98201 54321",
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
         dateOfBirth: "1995-04-12",
         gender: "Female",
         occupation: "Product Manager",
-        emergencyContact: "Rohit Sen (Spouse) - +91 98201 99999",
+        emergencyContact: "Rohit Chatterjee (Spouse) - +91 98201 99999",
         startDate: "2026-10-15",
         status: "active",
         trainingMode: "offline",
@@ -139,279 +95,7 @@ export function getSampleRosterData() {
         lifetimeRevenue: 18000,
         lastSessionDate: "2026-11-03",
         lastPaymentDate: "2026-10-15",
-        lastActivityDate: todayStr,
-        onboardingStep: 4,
-        customFields: {},
-        consentForMarketingPhotos: true
-      },
-      {
-        id: "client-2",
-        userId: "user-client-2",
-        name: "Sarah Chen",
-        email: "sarah.chen@gmail.com",
-        password: "client123",
-        phone: "+91 98765 12345",
-        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80",
-        dateOfBirth: "1994-08-14",
-        gender: "Female",
-        occupation: "Architect",
-        emergencyContact: "Kevin Chen (Brother) - +91 98765 99999",
-        startDate: "2026-10-10",
-        status: "active",
-        trainingMode: "offline",
-        trainingType: "Offline Studio Coaching",
-        trainingDays: ["Monday", "Wednesday", "Friday"],
-        sessionTime: "07:00 AM",
-        trainingFrequency: "3x per week",
-        currentGoal: "Lean Muscle & Posture",
-        goalsList: ["Improve posture", "Build upper body strength", "Squat 60kg"],
-        acquisitionSource: "Referral",
-        heightCm: 165,
-        weightKg: 63.0,
-        startingWeightKg: 67.0,
-        targetWeightKg: 60.0,
-        profileCompleted: true,
-        trainingExperience: "Intermediate",
-        fitnessLevel: "Intermediate",
-        injuries: "Mild right hamstring tightness",
-        restrictions: "Avoid rounded-back deadlifts",
-        equipmentAvailability: "The Push Fitness Studio",
-        lifestyleLevel: "Active",
-        dietaryPreference: "Flexible / Omnivore",
-        allergies: "Shellfish",
-        foodsAvoided: "Junk food on weekdays",
-        dailyCalorieTarget: 1850,
-        proteinTargetG: 135,
-        carbsTargetG: 190,
-        fatsTargetG: 55,
-        waterTargetMl: 3000,
-        nutritionNotes: "Hydration target 3L daily.",
-        adherenceScore: 92,
-        adherenceStatus: "Excellent",
-        workoutAdherence: 95,
-        nutritionAdherence: 88,
-        sessionAttendance: 95,
-        checkinAdherence: 90,
-        sessionsPurchased: 12,
-        sessionsCompleted: 6,
-        sessionsRemaining: 6,
-        sessionsCancelled: 0,
-        sessionsMissed: 0,
-        planName: "Personal Coaching Package (12 Sessions)",
-        monthlyPrice: 18000,
-        billingCycle: "Monthly",
-        paymentStatus: "paid",
-        nextPaymentDate: "2026-11-10",
-        amountPaidToDate: 18000,
-        renewalsCount: 1,
-        lifetimeRevenue: 18000,
-        lastSessionDate: "2026-11-02",
-        lastPaymentDate: "2026-10-10",
-        lastActivityDate: todayStr,
-        onboardingStep: 4,
-        customFields: {},
-        consentForMarketingPhotos: true
-      },
-      {
-        id: "client-3",
-        userId: "user-client-3",
-        name: "Marcus Vance",
-        email: "marcus.vance@gmail.com",
-        password: "client123",
-        phone: "+91 98334 67890",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
-        dateOfBirth: "1991-11-23",
-        gender: "Male",
-        occupation: "Finance Director",
-        emergencyContact: "Anita Vance - +91 98334 11111",
-        startDate: "2026-10-05",
-        status: "active",
-        trainingMode: "offline",
-        trainingType: "Offline Studio Coaching",
-        trainingDays: ["Tuesday", "Thursday", "Saturday"],
-        sessionTime: "06:00 PM",
-        trainingFrequency: "3x per week",
-        currentGoal: "Hypertrophy & Bench 100kg",
-        goalsList: ["Bench Press 100kg", "Broad shoulders", "Drop body fat to 14%"],
-        acquisitionSource: "Direct Walk-in",
-        heightCm: 180,
-        weightKg: 82.5,
-        startingWeightKg: 86.0,
-        targetWeightKg: 80.0,
-        profileCompleted: true,
-        trainingExperience: "Advanced",
-        fitnessLevel: "Advanced",
-        injuries: "None",
-        restrictions: "None",
-        equipmentAvailability: "The Push Fitness Studio",
-        lifestyleLevel: "High stress / busy desk job",
-        dietaryPreference: "High Protein Non-Veg",
-        allergies: "None",
-        foodsAvoided: "Excess alcohol",
-        dailyCalorieTarget: 2400,
-        proteinTargetG: 180,
-        carbsTargetG: 260,
-        fatsTargetG: 70,
-        waterTargetMl: 3500,
-        nutritionNotes: "Creatine 5g post-workout daily.",
-        adherenceScore: 96,
-        adherenceStatus: "Excellent",
-        workoutAdherence: 98,
-        nutritionAdherence: 94,
-        sessionAttendance: 100,
-        checkinAdherence: 95,
-        sessionsPurchased: 12,
-        sessionsCompleted: 9,
-        sessionsRemaining: 3,
-        sessionsCancelled: 0,
-        sessionsMissed: 0,
-        planName: "Personal Coaching Package (12 Sessions)",
-        monthlyPrice: 18000,
-        billingCycle: "Monthly",
-        paymentStatus: "paid",
-        nextPaymentDate: "2026-11-05",
-        amountPaidToDate: 18000,
-        renewalsCount: 1,
-        lifetimeRevenue: 18000,
-        lastSessionDate: "2026-11-05",
-        lastPaymentDate: "2026-10-05",
-        lastActivityDate: todayStr,
-        onboardingStep: 4,
-        customFields: {},
-        consentForMarketingPhotos: true
-      },
-      {
-        id: "client-4",
-        userId: "user-client-4",
-        name: "David Miller",
-        email: "david.miller@gmail.com",
-        password: "client123",
-        phone: "+91 98112 34567",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80",
-        dateOfBirth: "1988-06-30",
-        gender: "Male",
-        occupation: "Tech Lead / Remote",
-        emergencyContact: "Meera Miller - +91 98112 88888",
-        startDate: "2026-10-18",
-        status: "active",
-        trainingMode: "online",
-        trainingType: "Online Coaching",
-        trainingDays: ["Tuesday", "Thursday", "Saturday"],
-        sessionTime: "08:00 AM",
-        trainingFrequency: "3x per week",
-        currentGoal: "Fat Loss & Lower Back Health",
-        goalsList: ["Eliminate desk-induced lower back pain", "Lose 6kg fat"],
-        acquisitionSource: "Google Search",
-        heightCm: 176,
-        weightKg: 77.0,
-        startingWeightKg: 81.0,
-        targetWeightKg: 72.0,
-        profileCompleted: true,
-        trainingExperience: "Beginner",
-        fitnessLevel: "Intermediate",
-        injuries: "L4-L5 slight disc stiffness",
-        restrictions: "No heavy axial spine loading, prefer dumbbell & cable work",
-        equipmentAvailability: "Home Gym Dumbbells & Bands",
-        lifestyleLevel: "Sedentary work from home",
-        dietaryPreference: "Vegetarian with Eggs",
-        allergies: "None",
-        foodsAvoided: "Sugary drinks",
-        dailyCalorieTarget: 1900,
-        proteinTargetG: 140,
-        carbsTargetG: 210,
-        fatsTargetG: 55,
-        waterTargetMl: 3000,
-        nutritionNotes: "Egg whites + whey protein for targets.",
-        adherenceScore: 88,
-        adherenceStatus: "Good",
-        workoutAdherence: 90,
-        nutritionAdherence: 85,
-        sessionAttendance: 90,
-        checkinAdherence: 88,
-        sessionsPurchased: 12,
-        sessionsCompleted: 3,
-        sessionsRemaining: 9,
-        sessionsCancelled: 0,
-        sessionsMissed: 0,
-        planName: "Online Virtual Coaching Package (12 Sessions)",
-        monthlyPrice: 15000,
-        billingCycle: "Monthly",
-        paymentStatus: "paid",
-        nextPaymentDate: "2026-11-18",
-        amountPaidToDate: 15000,
-        renewalsCount: 1,
-        lifetimeRevenue: 15000,
-        lastSessionDate: "2026-11-03",
-        lastPaymentDate: "2026-10-18",
-        lastActivityDate: todayStr,
-        onboardingStep: 4,
-        customFields: {},
-        consentForMarketingPhotos: false
-      },
-      {
-        id: "client-5",
-        userId: "user-client-5",
-        name: "Priya Sharma",
-        email: "priya.sharma@gmail.com",
-        password: "client123",
-        phone: "+91 98450 98765",
-        avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80",
-        dateOfBirth: "1997-02-19",
-        gender: "Female",
-        occupation: "Fashion Marketer",
-        emergencyContact: "Sunil Sharma - +91 98450 11111",
-        startDate: "2026-10-12",
-        status: "active",
-        trainingMode: "offline",
-        trainingType: "Offline Studio Coaching",
-        trainingDays: ["Monday", "Wednesday", "Friday"],
-        sessionTime: "05:00 PM",
-        trainingFrequency: "3x per week",
-        currentGoal: "Glute Hypertrophy & Toning",
-        goalsList: ["Glute growth", "Hip thrust 90kg", "Tighten waistline"],
-        acquisitionSource: "Instagram",
-        heightCm: 160,
-        weightKg: 54.0,
-        startingWeightKg: 55.5,
-        targetWeightKg: 53.0,
-        profileCompleted: true,
-        trainingExperience: "Intermediate",
-        fitnessLevel: "Intermediate",
-        injuries: "None",
-        restrictions: "None",
-        equipmentAvailability: "The Push Fitness Studio",
-        lifestyleLevel: "Active",
-        dietaryPreference: "Vegetarian",
-        allergies: "Lactose sensitivity",
-        foodsAvoided: "Whole milk",
-        dailyCalorieTarget: 1650,
-        proteinTargetG: 115,
-        carbsTargetG: 185,
-        fatsTargetG: 45,
-        waterTargetMl: 2600,
-        nutritionNotes: "Plant protein / lactose-free whey isolate.",
-        adherenceScore: 91,
-        adherenceStatus: "Excellent",
-        workoutAdherence: 94,
-        nutritionAdherence: 88,
-        sessionAttendance: 95,
-        checkinAdherence: 90,
-        sessionsPurchased: 12,
-        sessionsCompleted: 5,
-        sessionsRemaining: 7,
-        sessionsCancelled: 0,
-        sessionsMissed: 0,
-        planName: "Personal Coaching Package (12 Sessions)",
-        monthlyPrice: 18000,
-        billingCycle: "Monthly",
-        paymentStatus: "paid",
-        nextPaymentDate: "2026-11-12",
-        amountPaidToDate: 18000,
-        renewalsCount: 1,
-        lifetimeRevenue: 18000,
-        lastSessionDate: "2026-11-04",
-        lastPaymentDate: "2026-10-12",
-        lastActivityDate: todayStr,
+        lastActivityDate: "2026-11-06",
         onboardingStep: 4,
         customFields: {},
         consentForMarketingPhotos: true
@@ -420,595 +104,414 @@ export function getSampleRosterData() {
 
     programs: [
       {
-        id: "prog-anindita-1",
+        id: "prog-1",
         clientId: "client-1",
-        name: "Anindita - 12-Week Hypertrophy & Recomposition",
+        clientName: "Anindita Chatterjee",
+        name: "Full Body Recomposition & Core Strength",
         goal: "Fat Loss & Core Strength",
-        durationWeeks: 12,
-        daysPerWeek: 4,
         status: "active",
-        createdAt: "2026-10-15T09:30:00Z",
-        days: [
-          {
-            id: "d1-anindita",
-            dayNumber: 1,
-            name: "Day 1 - Upper Body (Chest & Back Focus)",
-            focus: "Upper Push & Pull",
-            exercises: [
-              { id: "e1", name: "Incline Dumbbell Press", sets: 3, reps: "10-12", targetWeightKg: 10, notes: "Controlled tempo, full chest stretch" },
-              { id: "e2", name: "Lat Pulldown (Neutral Grip)", sets: 3, reps: "10-12", targetWeightKg: 30, notes: "Drive elbows to ribs" },
-              { id: "e3", name: "Seated Cable Row", sets: 3, reps: "12", targetWeightKg: 25, notes: "Pause 1s at contraction" },
-              { id: "e4", name: "Dumbbell Lateral Raises", sets: 3, reps: "15", targetWeightKg: 4, notes: "Lead with elbows" },
-              { id: "e5", name: "Cable Tricep Pushdowns", sets: 3, reps: "12", targetWeightKg: 12.5, notes: "Lockout elbows at bottom" }
-            ],
-            conditioning: { title: "Rowing Machine Intervals", duration: "10 mins", format: "Intervals", notes: "30s sprint / 30s easy paddle" }
-          },
-          {
-            id: "d2-anindita",
-            dayNumber: 2,
-            name: "Day 2 - Lower Body (Glute & Quad Focus)",
-            focus: "Lower Compound Strength",
-            exercises: [
-              { id: "e6", name: "Goblet Squats", sets: 4, reps: "10", targetWeightKg: 16, notes: "Knees track over toes, deep squat" },
-              { id: "e7", name: "Romanian Deadlift (Dumbbell)", sets: 3, reps: "10-12", targetWeightKg: 12, notes: "Hinge hips back, feel hamstrings stretch" },
-              { id: "e8", name: "Walking Lunges", sets: 3, reps: "12/leg", targetWeightKg: 8, notes: "Torso slightly leaned forward" },
-              { id: "e9", name: "Leg Press", sets: 3, reps: "12", targetWeightKg: 60, notes: "Full depth without rounding lower back" }
-            ]
-          },
-          {
-            id: "d3-anindita",
-            dayNumber: 3,
-            name: "Day 3 - Full Body Circuit & Core",
-            focus: "Metabolic Conditioning & Core",
-            exercises: [
-              { id: "e10", name: "Kettlebell Deadlift", sets: 3, reps: "12", targetWeightKg: 20, notes: "Lock hips at top" },
-              { id: "e11", name: "Push-ups (Incline or Knee)", sets: 3, reps: "10-12", targetWeightKg: 0, notes: "Elbows at 45 degrees" },
-              { id: "e12", name: "Plank Hold", sets: 3, reps: "45 sec", targetWeightKg: 0, notes: "Tuck pelvis, squeeze glutes" },
-              { id: "e13", name: "Cable Paloff Press", sets: 3, reps: "12/side", targetWeightKg: 7.5, notes: "Anti-rotation core brace" }
-            ]
-          }
-        ]
-      },
-      {
-        id: "prog-sarah-1",
-        clientId: "client-2",
-        name: "Sarah - Lean & Sculpt Phase 2",
-        goal: "Lean Muscle & Posture",
-        durationWeeks: 12,
-        daysPerWeek: 4,
-        status: "active",
-        createdAt: "2026-10-10T09:00:00Z",
-        days: [
-          {
-            id: "d1-sarah",
-            dayNumber: 1,
-            name: "Day 1 - Push & Core",
-            focus: "Chest, Shoulders, Triceps",
-            exercises: [
-              { id: "se1", name: "Barbell Bench Press", sets: 4, reps: "8-10", targetWeightKg: 35, notes: "Pinch shoulder blades" },
-              { id: "se2", name: "Overhead Dumbbell Press", sets: 3, reps: "10", targetWeightKg: 10, notes: "Core tight" },
-              { id: "se3", name: "Cable Lateral Raises", sets: 3, reps: "15", targetWeightKg: 5, notes: "Smooth motion" }
-            ]
-          }
-        ]
-      },
-      {
-        id: "prog-marcus-1",
-        clientId: "client-3",
-        name: "Marcus - Strength Foundations 5x5",
-        goal: "Strength & Hypertrophy",
+        assignedDate: "2026-10-15",
         durationWeeks: 8,
         daysPerWeek: 3,
-        status: "active",
-        createdAt: "2026-10-05T10:00:00Z",
+        notes: "Prioritize strict tempo and full range of motion. Rest 60-90s between sets.",
         days: [
           {
-            id: "d1-marcus",
             dayNumber: 1,
-            name: "Day 1 - Heavy Squat & Bench",
-            focus: "Compound Power",
+            name: "Day 1: Lower Body & Core Focus",
+            focus: "Squat mechanics, posterior chain & core",
             exercises: [
-              { id: "me1", name: "Barbell Back Squat", sets: 5, reps: "5", targetWeightKg: 95, notes: "Heavy 5x5" },
-              { id: "me2", name: "Barbell Bench Press", sets: 5, reps: "5", targetWeightKg: 85, notes: "Explosive concentric" }
-            ]
+              {
+                id: "d1-ex1",
+                name: "Goblet Squat (Dumbbell/Kettlebell)",
+                sets: 3,
+                reps: "12",
+                targetWeights: [16, 18, 20],
+                restSeconds: 90,
+                tempo: "3-0-1-0",
+                notes: "Elbows inside knees, chest proud, full depth"
+              },
+              {
+                id: "d1-ex2",
+                name: "Romanian Deadlift (Dumbbells)",
+                sets: 3,
+                reps: "10-12",
+                targetWeights: [14, 16, 16],
+                restSeconds: 90,
+                tempo: "3-1-1-0",
+                notes: "Hinge at the hips, soft knee bend, feel hamstring stretch"
+              },
+              {
+                id: "d1-ex3",
+                name: "Bulgarian Split Squats",
+                sets: 3,
+                reps: "10/leg",
+                targetWeights: [8, 10, 10],
+                restSeconds: 60,
+                tempo: "2-0-1-0",
+                notes: "Control descent, front foot flat on floor"
+              },
+              {
+                id: "d1-ex4",
+                name: "Plank with Shoulder Taps",
+                sets: 3,
+                reps: "16 taps",
+                targetWeights: [0, 0, 0],
+                restSeconds: 45,
+                tempo: "Controlled",
+                notes: "No hip sway, squeeze glutes and brace abs"
+              }
+            ],
+            conditioning: {
+              format: "10-Min Steady State Cardio",
+              title: "Treadmill Incline Walk",
+              duration: "10 mins",
+              description: "Incline 8.0, Speed 5.2 km/h. Keep hands off rails.",
+              notes: "Heart rate in Zone 2"
+            }
+          },
+          {
+            dayNumber: 2,
+            name: "Day 2: Upper Body Pull & Push Hypertrophy",
+            focus: "Back posture, shoulders & arms tone",
+            exercises: [
+              {
+                id: "d2-ex1",
+                name: "Neutral Grip Lat Pulldown",
+                sets: 3,
+                reps: "12",
+                targetWeights: [35, 40, 40],
+                restSeconds: 75,
+                tempo: "2-1-1-1",
+                notes: "1-second squeeze at chest, controlled 2-second negative"
+              },
+              {
+                id: "d2-ex2",
+                name: "Incline Dumbbell Bench Press",
+                sets: 3,
+                reps: "10-12",
+                targetWeights: [10, 12, 12],
+                restSeconds: 75,
+                tempo: "2-0-1-0",
+                notes: "30-degree bench angle, tuck elbows at 45 degrees"
+              },
+              {
+                id: "d2-ex3",
+                name: "Chest-Supported Dumbbell Rows",
+                sets: 3,
+                reps: "12",
+                targetWeights: [10, 12, 12],
+                restSeconds: 60,
+                tempo: "2-1-1-0",
+                notes: "Squeeze shoulder blades together at top"
+              },
+              {
+                id: "d2-ex4",
+                name: "Dumbbell Lateral Raises",
+                sets: 3,
+                reps: "15",
+                targetWeights: [4, 5, 5],
+                restSeconds: 45,
+                tempo: "2-0-1-0",
+                notes: "Slight forward lean, raise with elbows"
+              }
+            ],
+            conditioning: {
+              format: "Finisher Circuit",
+              title: "Rowing Machine Sprint Intervals",
+              duration: "8 mins",
+              description: "30s sprint @ >28 SPM / 30s slow recovery paddle x 8 rounds",
+              notes: "Push for max distance each sprint"
+            }
+          },
+          {
+            dayNumber: 3,
+            name: "Day 3: Full Body Conditioning & Density",
+            focus: "High calorie expenditure, functional stability & core",
+            exercises: [
+              {
+                id: "d3-ex1",
+                name: "Kettlebell Deadlift to High Pull",
+                sets: 3,
+                reps: "12",
+                targetWeights: [16, 20, 20],
+                restSeconds: 60,
+                tempo: "Explosive",
+                notes: "Drive through heels, snap hips"
+              },
+              {
+                id: "d3-ex2",
+                name: "Dumbbell Step-Ups",
+                sets: 3,
+                reps: "10/leg",
+                targetWeights: [8, 10, 10],
+                restSeconds: 60,
+                tempo: "Controlled",
+                notes: "Drive through lead heel, minimal push from back foot"
+              },
+              {
+                id: "d3-ex3",
+                name: "Cable Face Pulls",
+                sets: 3,
+                reps: "15",
+                targetWeights: [15, 17.5, 17.5],
+                restSeconds: 45,
+                tempo: "2-1-1-1",
+                notes: "Pull to eye level, external rotation at end range"
+              },
+              {
+                id: "d3-ex4",
+                name: "Hanging Knee Raises / Captain's Chair",
+                sets: 3,
+                reps: "12",
+                targetWeights: [0, 0, 0],
+                restSeconds: 45,
+                tempo: "Controlled",
+                notes: "Roll pelvis upward, avoid swinging"
+              }
+            ],
+            conditioning: {
+              format: "10-Min AMRAP",
+              title: "Engine Burnout AMRAP",
+              duration: "10 mins",
+              description: "10 Calorie Bike + 12 Kettlebell Swings (16kg) + 8 Slam Balls (7kg)",
+              notes: "Keep steady aerobic pace throughout"
+            }
           }
         ]
       }
     ],
 
     sessions: [
-      // Anindita's Completed Session on 3rd November (with workout details logged!)
       {
-        id: "sess-anindita-nov3",
-        trainerId: "user-trainer-1",
+        id: "sess-1",
         clientId: "client-1",
-        clientName: "Anindita Sen",
+        clientName: "Anindita Chatterjee",
         date: "2026-11-03",
         time: "10:00 AM",
-        durationMinutes: 60,
+        duration: 60,
         location: "The Push Fitness Studio",
-        sessionType: "Offline 1-on-1 Studio Session",
+        type: "1-on-1 In-Person",
         status: "completed",
-        notes: "Excellent form on Incline Dumbbell Press. Increased Lat Pulldown to 32.5kg! Great energy today.",
+        notes: "Excellent execution on Goblet Squats (20kg PR) and Incline Walk.",
         workoutDone: {
-          workoutName: "Day 1 - Upper Body (Chest & Back Focus)",
-          dayName: "Day 1 - Upper Body (Chest & Back Focus)",
+          programId: "prog-1",
+          programName: "Full Body Recomposition & Core Strength",
           dayNumber: 1,
-          programId: "prog-anindita-1",
-          programName: "Anindita - 12-Week Hypertrophy & Recomposition",
+          dayName: "Day 1: Lower Body & Core Focus",
+          focus: "Squat mechanics, posterior chain & core",
+          completedAt: "2026-11-03T11:05:00.000Z",
           rpe: 8,
           totalVolumeKg: 4250,
-          sessionNotes: "Client moved 10kg DBs easily on incline bench. Increased Lat Pulldown pin. Next week we test 12kg dumbbells.",
+          sessionNotes: "Anindita hit a new personal best on Goblet Squats with 20kg dumbbell! Great mobility, knees tracked perfectly over toes.",
           exercises: [
             {
-              id: "we-1",
-              name: "Incline Dumbbell Press",
-              prescribedText: "3 sets × 10-12 reps",
-              alternative: "",
-              notes: "Elbows tucked, slow controlled eccentric",
+              id: "d1-ex1",
+              name: "Goblet Squat (Dumbbell/Kettlebell)",
+              prescribedText: "3 sets × 12 reps @ 20 kg",
+              notes: "Elbows inside knees, clean depth on all 3 sets",
               sets: [
-                { setNum: 1, weightKg: 10, reps: 12, completed: true },
+                { setNum: 1, weightKg: 16, reps: 12, completed: true },
+                { setNum: 2, weightKg: 18, reps: 12, completed: true },
+                { setNum: 3, weightKg: 20, reps: 12, completed: true }
+              ]
+            },
+            {
+              id: "d1-ex2",
+              name: "Romanian Deadlift (Dumbbells)",
+              prescribedText: "3 sets × 10-12 reps @ 16 kg",
+              notes: "Hips hinged back properly, soft knees",
+              sets: [
+                { setNum: 1, weightKg: 14, reps: 12, completed: true },
+                { setNum: 2, weightKg: 16, reps: 12, completed: true },
+                { setNum: 3, weightKg: 16, reps: 10, completed: true }
+              ]
+            },
+            {
+              id: "d1-ex3",
+              name: "Bulgarian Split Squats",
+              prescribedText: "3 sets × 10/leg @ 10 kg",
+              notes: "Good balance maintained",
+              sets: [
+                { setNum: 1, weightKg: 8, reps: 10, completed: true },
                 { setNum: 2, weightKg: 10, reps: 10, completed: true },
                 { setNum: 3, weightKg: 10, reps: 10, completed: true }
               ]
             },
             {
-              id: "we-2",
-              name: "Lat Pulldown (Neutral Grip)",
-              prescribedText: "3 sets × 10-12 reps",
-              alternative: "",
-              notes: "Clean contraction, full lat stretch at top",
+              id: "d1-ex4",
+              name: "Plank with Shoulder Taps",
+              prescribedText: "3 sets × 16 taps",
+              notes: "Hips locked and stable",
               sets: [
-                { setNum: 1, weightKg: 30, reps: 12, completed: true },
-                { setNum: 2, weightKg: 32.5, reps: 10, completed: true },
-                { setNum: 3, weightKg: 32.5, reps: 10, completed: true }
-              ]
-            },
-            {
-              id: "we-3",
-              name: "Seated Cable Row",
-              prescribedText: "3 sets × 12 reps",
-              alternative: "",
-              notes: "1s squeeze at sternum",
-              sets: [
-                { setNum: 1, weightKg: 25, reps: 12, completed: true },
-                { setNum: 2, weightKg: 25, reps: 12, completed: true },
-                { setNum: 3, weightKg: 27.5, reps: 10, completed: true }
-              ]
-            },
-            {
-              id: "we-4",
-              name: "Dumbbell Lateral Raises",
-              prescribedText: "3 sets × 15 reps",
-              alternative: "",
-              notes: "Strict form, no swinging",
-              sets: [
-                { setNum: 1, weightKg: 4, reps: 15, completed: true },
-                { setNum: 2, weightKg: 4, reps: 15, completed: true },
-                { setNum: 3, weightKg: 4, reps: 14, completed: true }
-              ]
-            },
-            {
-              id: "we-5",
-              name: "Cable Tricep Pushdowns",
-              prescribedText: "3 sets × 12 reps",
-              alternative: "",
-              notes: "Full extension at bottom",
-              sets: [
-                { setNum: 1, weightKg: 12.5, reps: 12, completed: true },
-                { setNum: 2, weightKg: 12.5, reps: 12, completed: true },
-                { setNum: 3, weightKg: 15, reps: 10, completed: true }
+                { setNum: 1, weightKg: 0, reps: 16, completed: true },
+                { setNum: 2, weightKg: 0, reps: 16, completed: true },
+                { setNum: 3, weightKg: 0, reps: 16, completed: true }
               ]
             }
           ],
           finisher: {
-            title: "Rowing Machine Intervals",
+            title: "Treadmill Incline Walk",
             duration: "10 mins",
-            notes: "Completed 5 rounds of 30s sprint / 30s rest. Average split 2:12/500m."
+            description: "Incline 8.0, Speed 5.2 km/h",
+            notes: "Heart rate sustained 135 bpm, completed full 10 minutes without touching rails."
           }
-        },
-        createdAt: "2026-11-03T10:00:00.000Z"
+        }
       },
-      // Upcoming and recent sessions for Anindita
       {
-        id: "sess-anindita-upcoming-1",
-        trainerId: "user-trainer-1",
+        id: "sess-2",
         clientId: "client-1",
-        clientName: "Anindita Sen",
-        date: "2026-11-06",
+        clientName: "Anindita Chatterjee",
+        date: todayStr,
         time: "10:00 AM",
-        durationMinutes: 60,
+        duration: 60,
         location: "The Push Fitness Studio",
-        sessionType: "Offline 1-on-1 Studio Session",
+        type: "1-on-1 In-Person",
         status: "scheduled",
-        notes: "Day 2 - Lower Body (Glute & Quad Focus)",
-        createdAt: "2026-10-15T09:00:00.000Z"
+        notes: "Today: Upper body pull & push session + rowing intervals."
       },
       {
-        id: "sess-anindita-upcoming-2",
-        trainerId: "user-trainer-1",
+        id: "sess-3",
         clientId: "client-1",
-        clientName: "Anindita Sen",
-        date: "2026-11-09",
+        clientName: "Anindita Chatterjee",
+        date: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         time: "10:00 AM",
-        durationMinutes: 60,
+        duration: 60,
         location: "The Push Fitness Studio",
-        sessionType: "Offline 1-on-1 Studio Session",
+        type: "1-on-1 In-Person",
         status: "scheduled",
-        notes: "Day 3 - Full Body Circuit & Core",
-        createdAt: "2026-10-15T09:00:00.000Z"
-      },
-      // Sessions for Sarah
-      {
-        id: "sess-sarah-1",
-        trainerId: "user-trainer-1",
-        clientId: "client-2",
-        clientName: "Sarah Chen",
-        date: "2026-11-02",
-        time: "07:00 AM",
-        durationMinutes: 60,
-        location: "The Push Fitness Studio",
-        sessionType: "Offline 1-on-1 Studio Session",
-        status: "completed",
-        notes: "Bench press PR hit: 37.5kg for 8 reps!",
-        createdAt: "2026-10-10T08:00:00.000Z"
-      },
-      {
-        id: "sess-sarah-upcoming",
-        trainerId: "user-trainer-1",
-        clientId: "client-2",
-        clientName: "Sarah Chen",
-        date: "2026-11-06",
-        time: "07:00 AM",
-        durationMinutes: 60,
-        location: "The Push Fitness Studio",
-        sessionType: "Offline 1-on-1 Studio Session",
-        status: "scheduled",
-        notes: "Day 2 - Posterior Chain & Pull",
-        createdAt: "2026-10-10T08:00:00.000Z"
-      },
-      // Sessions for Marcus
-      {
-        id: "sess-marcus-1",
-        trainerId: "user-trainer-1",
-        clientId: "client-3",
-        clientName: "Marcus Vance",
-        date: "2026-11-05",
-        time: "06:00 PM",
-        durationMinutes: 60,
-        location: "The Push Fitness Studio",
-        sessionType: "Offline 1-on-1 Studio Session",
-        status: "completed",
-        notes: "Squat 100kg moved smooth for 5 sets of 5.",
-        createdAt: "2026-10-05T10:00:00.000Z"
-      },
-      {
-        id: "sess-marcus-upcoming",
-        trainerId: "user-trainer-1",
-        clientId: "client-3",
-        clientName: "Marcus Vance",
-        date: "2026-11-07",
-        time: "06:00 PM",
-        durationMinutes: 60,
-        location: "The Push Fitness Studio",
-        sessionType: "Offline 1-on-1 Studio Session",
-        status: "scheduled",
-        notes: "Heavy Deadlift & Arms",
-        createdAt: "2026-10-05T10:00:00.000Z"
-      }
-    ],
-
-    workoutLogs: [
-      {
-        id: "wlog-anindita-nov3",
-        sessionId: "sess-anindita-nov3",
-        clientId: "client-1",
-        workoutName: "Day 1 - Upper Body (Chest & Back Focus)",
-        programId: "prog-anindita-1",
-        programName: "Anindita - 12-Week Hypertrophy & Recomposition",
-        dayNumber: 1,
-        date: "2026-11-03",
-        durationMinutes: 60,
-        totalVolumeKg: 4250,
-        exercisesCompleted: [
-          { exerciseName: "Incline Dumbbell Press", sets: [{ setNum: 1, weightKg: 10, reps: 12, completed: true }, { setNum: 2, weightKg: 10, reps: 10, completed: true }, { setNum: 3, weightKg: 10, reps: 10, completed: true }] },
-          { exerciseName: "Lat Pulldown (Neutral Grip)", sets: [{ setNum: 1, weightKg: 30, reps: 12, completed: true }, { setNum: 2, weightKg: 32.5, reps: 10, completed: true }, { setNum: 3, weightKg: 32.5, reps: 10, completed: true }] },
-          { exerciseName: "Seated Cable Row", sets: [{ setNum: 1, weightKg: 25, reps: 12, completed: true }, { setNum: 2, weightKg: 25, reps: 12, completed: true }, { setNum: 3, weightKg: 27.5, reps: 10, completed: true }] },
-          { exerciseName: "Dumbbell Lateral Raises", sets: [{ setNum: 1, weightKg: 4, reps: 15, completed: true }, { setNum: 2, weightKg: 4, reps: 15, completed: true }, { setNum: 3, weightKg: 4, reps: 14, completed: true }] },
-          { exerciseName: "Cable Tricep Pushdowns", sets: [{ setNum: 1, weightKg: 12.5, reps: 12, completed: true }, { setNum: 2, weightKg: 12.5, reps: 12, completed: true }, { setNum: 3, weightKg: 15, reps: 10, completed: true }] }
-        ],
-        finisher: { title: "Rowing Machine Intervals", duration: "10 mins", notes: "5 rounds 30s sprint / 30s rest" },
-        notes: "Client moved 10kg DBs easily on incline bench. Next week test 12kg.",
-        rpe: 8,
-        createdAt: "2026-11-03T11:00:00.000Z"
-      }
-    ],
-
-    nutritionLogs: [
-      {
-        id: "nutri-anindita-1",
-        clientId: "client-1",
-        date: "2026-11-05",
-        totalCalories: 1720,
-        proteinG: 122,
-        carbsG: 165,
-        fatsG: 48,
-        waterMl: 2900,
-        notes: "Hit protein goal easily with boiled eggs and whey shake.",
-        createdAt: "2026-11-05T21:00:00.000Z"
+        notes: "Full body conditioning & core density."
       }
     ],
 
     payments: [
       {
-        id: "pay-anindita-1",
+        id: "pay-1",
         clientId: "client-1",
-        clientName: "Anindita Sen",
-        planName: "Personal Coaching Package (12 Sessions)",
+        clientName: "Anindita Chatterjee",
         amount: 18000,
-        billingCycle: "Monthly",
-        dueDate: "2026-10-15",
-        paidDate: "2026-10-15",
+        date: "2026-10-15",
         status: "paid",
-        paymentMethod: "UPI (GPay / PhonePe)",
-        referenceId: "UPI_ASEN_889102",
-        notes: "Advance prepaid coaching package payment received beforehand",
-        createdAt: "2026-10-15T09:00:00.000Z"
-      },
+        sessionsAdded: 12,
+        packageName: "12 Sessions Personal Training Package (₹18,000)",
+        method: "UPI (Google Pay)",
+        notes: "Initial upfront monthly package payment received via UPI."
+      }
+    ],
+
+    workoutLogs: [
       {
-        id: "pay-sarah-1",
-        clientId: "client-2",
-        clientName: "Sarah Chen",
-        planName: "Personal Coaching Package (12 Sessions)",
-        amount: 18000,
-        billingCycle: "Monthly",
-        dueDate: "2026-10-10",
-        paidDate: "2026-10-10",
-        status: "paid",
-        paymentMethod: "UPI (GPay / PhonePe)",
-        referenceId: "UPI_SCHEN_447812",
-        notes: "Advance prepaid package fee",
-        createdAt: "2026-10-10T08:00:00.000Z"
-      },
+        id: "wl-1",
+        clientId: "client-1",
+        clientName: "Anindita Chatterjee",
+        programId: "prog-1",
+        date: "2026-11-03",
+        workoutName: "Day 1: Lower Body & Core Focus",
+        durationMinutes: 55,
+        totalVolumeKg: 4250,
+        rpe: 8,
+        notes: "Session logged by Coach Pushkar Mayekar. 20kg Goblet Squat PR recorded."
+      }
+    ],
+
+    nutritionLogs: [
       {
-        id: "pay-marcus-1",
-        clientId: "client-3",
-        clientName: "Marcus Vance",
-        planName: "Personal Coaching Package (12 Sessions)",
-        amount: 18000,
-        billingCycle: "Monthly",
-        dueDate: "2026-10-05",
-        paidDate: "2026-10-05",
-        status: "paid",
-        paymentMethod: "UPI (GPay / PhonePe)",
-        referenceId: "UPI_MVANCE_123984",
-        notes: "Upfront coaching fee paid",
-        createdAt: "2026-10-05T10:00:00.000Z"
-      },
-      {
-        id: "pay-david-1",
-        clientId: "client-4",
-        clientName: "David Miller",
-        planName: "Online Virtual Coaching Package (12 Sessions)",
-        amount: 15000,
-        billingCycle: "Monthly",
-        dueDate: "2026-10-18",
-        paidDate: "2026-10-18",
-        status: "paid",
-        paymentMethod: "UPI (GPay / PhonePe)",
-        referenceId: "UPI_DMILLER_990142",
-        notes: "Online personal coaching prepaid package",
-        createdAt: "2026-10-18T14:00:00.000Z"
-      },
-      {
-        id: "pay-priya-1",
-        clientId: "client-5",
-        clientName: "Priya Sharma",
-        planName: "Personal Coaching Package (12 Sessions)",
-        amount: 18000,
-        billingCycle: "Monthly",
-        dueDate: "2026-10-12",
-        paidDate: "2026-10-12",
-        status: "paid",
-        paymentMethod: "UPI (GPay / PhonePe)",
-        referenceId: "UPI_PSHARMA_652190",
-        notes: "Prepaid 12-session coaching package",
-        createdAt: "2026-10-12T11:00:00.000Z"
+        id: "nl-1",
+        clientId: "client-1",
+        date: "2026-11-03",
+        calories: 1720,
+        proteinG: 122,
+        carbsG: 168,
+        fatsG: 48,
+        waterMl: 3000,
+        notes: "Hit all macronutrient targets. Kept dinner light with grilled chicken salad."
       }
     ],
 
     measurements: [
       {
-        id: "m-anindita-1",
+        id: "meas-1",
         clientId: "client-1",
         date: "2026-10-15",
         weightKg: 62.0,
-        waistCm: 74,
-        hipsCm: 96,
-        bodyFatPercent: 26.5
+        bodyFatPercentage: 27.5,
+        chestCm: 90,
+        waistCm: 76,
+        hipsCm: 99,
+        thighsCm: 56,
+        notes: "Baseline measurement on joining."
       },
       {
-        id: "m-anindita-2",
+        id: "meas-2",
         clientId: "client-1",
         date: "2026-11-03",
         weightKg: 58.5,
-        waistCm: 70,
-        hipsCm: 94,
-        bodyFatPercent: 24.0
+        bodyFatPercentage: 25.1,
+        chestCm: 88,
+        waistCm: 72,
+        hipsCm: 96,
+        thighsCm: 54,
+        notes: "3.5 kg fat loss progress check-in! Waist down 4 cm."
       }
     ],
 
     performanceMetrics: [
       {
-        id: "pm-anindita-1",
+        id: "pm-1",
         clientId: "client-1",
-        exerciseName: "Incline Dumbbell Press",
-        weightKg: 10,
-        reps: 12,
-        estimated1Rm: 14,
-        date: "2026-11-03"
+        date: "2026-11-03",
+        exerciseName: "Goblet Squat (Dumbbell)",
+        metricType: "1RM Estimate",
+        value: 20,
+        unit: "kg",
+        notes: "12 solid reps with 20kg dumbbell."
       }
     ],
 
     progressPhotos: [],
     notes: [
       {
-        id: "note-anindita-1",
+        id: "note-1",
         clientId: "client-1",
         authorId: "user-trainer-1",
         authorName: "Coach Pushkar Mayekar",
-        title: "Session Feedback - 3rd Nov",
-        content: "Anindita demonstrated great shoulder control on dumbbell presses today. Continue cueing elbows at 45 degrees.",
-        isPrivate: true,
-        category: "workout",
-        createdAt: "2026-11-03T11:15:00.000Z"
+        content: "Anindita responds very well to progressive overload on squats and dumbbell presses. Maintain strict 60-90s rest periods.",
+        isPinned: true,
+        createdAt: "2026-10-16T10:00:00.000Z"
       }
     ],
 
-    messages: [
-      {
-        id: "msg-anindita-1",
-        senderId: "user-trainer-1",
-        senderRole: "trainer",
-        recipientId: "client-1",
-        clientId: "client-1",
-        text: "Great session on Tuesday Anindita! 10kg incline dumbbells moved like butter. See you on Friday at 10:00 AM!",
-        category: "workout",
-        isRead: true,
-        timestamp: "2026-11-03T12:00:00.000Z"
-      },
-      {
-        id: "msg-anindita-2",
-        senderId: "user-client-1",
-        senderRole: "client",
-        recipientId: "user-trainer-1",
-        clientId: "client-1",
-        text: "Thanks Coach Pushkar! Upper body feels worked but great! Looking forward to Friday's session.",
-        category: "workout",
-        isRead: true,
-        timestamp: "2026-11-03T13:30:00.000Z"
-      }
-    ],
-
+    messages: [],
     checkins: [
       {
-        id: "chk-anindita-1",
+        id: "chk-1",
         clientId: "client-1",
-        clientName: "Anindita Sen",
-        date: "2026-11-01",
-        status: "reviewed",
-        responses: {
-          energyRating: 9,
-          sleepHours: 7.5,
-          sleepQuality: 9,
-          workoutConsistency: 10,
-          nutritionConsistency: 9,
-          waterCompliance: 9,
-          painOrDiscomfort: "None, felt energetic all week",
-          winsThisWeek: "Hit all 3 sessions with Coach Pushkar and drank 2.8L water daily!",
-          biggestObstacle: "Office snack cravings, replaced with roasted chana and almonds",
-          nextWeekGoal: "Increase weights on dumbbell presses"
-        },
-        trainerFeedback: "Outstanding commitment Anindita! The consistency is paying off directly in your posture and energy levels.",
-        reviewedAt: "2026-11-01T19:00:00.000Z"
+        clientName: "Anindita Chatterjee",
+        date: "2026-11-03",
+        weightKg: 58.5,
+        energyLevel: 9,
+        sleepHours: 7.5,
+        workoutAdherencePct: 100,
+        nutritionAdherencePct: 95,
+        feedback: "Feeling much stronger and lighter! Excited for the next phase of training.",
+        reviewedByTrainer: true,
+        trainerReply: "Amazing work Anindita! Your squat form and conditioning are progressing rapidly."
       }
     ],
 
     notifications: [
       {
-        id: "notif-welcome-1",
+        id: "notif-1",
         userId: "user-trainer-1",
         role: "trainer",
-        title: "Welcome to thepushfittness OS",
-        message: "Your coaching roster is active with 5 athletes.",
+        title: "Session Completed",
+        message: "Anindita Chatterjee completed Day 1: Lower Body & Core Focus (4,250 kg volume).",
         type: "session",
-        isRead: true,
-        timestamp: "2026-10-02T11:07:59.361Z",
-        link: "/clients"
+        isRead: false,
+        timestamp: "2026-11-03T11:05:00.000Z",
+        link: "/clients/client-1?tab=sessions"
       }
     ],
 
-    templates: [
-      {
-        id: "tpl-1",
-        type: "program",
-        name: "12-Week Hypertrophy & Body Recomposition",
-        goal: "Muscle Gain & Fat Loss",
-        daysPerWeek: 4,
-        durationWeeks: 12,
-        description: "Proven upper/lower split prioritizing progressive overload on compound lifts with targeted hypertrophy isolation.",
-        days: [
-          {
-            id: "d1",
-            name: "Day 1 - Upper Body (Chest & Back Focus)",
-            exercises: [
-              { id: "e1", name: "Barbell Bench Press", sets: 4, reps: "8-10", restSec: 90, rpe: 8, targetWeightKg: 60, notes: "Retract scapulae, controlled eccentric tempo" },
-              { id: "e2", name: "Bent-Over Barbell Row", sets: 4, reps: "8-10", restSec: 90, rpe: 8, targetWeightKg: 50, notes: "Pull to lower sternum, hold 1s squeeze" },
-              { id: "e3", name: "Incline Dumbbell Press", sets: 3, reps: "10-12", restSec: 60, rpe: 8, targetWeightKg: 22, notes: "30-degree incline" },
-              { id: "e4", name: "Lat Pulldown (Neutral Grip)", sets: 3, reps: "10-12", restSec: 60, rpe: 8, targetWeightKg: 55, notes: "Full stretch at top" },
-              { id: "e5", name: "Lateral Cable Raises", sets: 3, reps: "15", restSec: 45, rpe: 9, targetWeightKg: 7.5, notes: "Lead with elbows" }
-            ]
-          },
-          {
-            id: "d2",
-            name: "Day 2 - Lower Body (Quad & Glute Focus)",
-            exercises: [
-              { id: "e6", name: "Barbell Back Squat", sets: 4, reps: "6-8", restSec: 120, rpe: 8, targetWeightKg: 80, notes: "Brace core hard, below parallel" },
-              { id: "e7", name: "Romanian Deadlift (Dumbbell)", sets: 3, reps: "10-12", restSec: 90, rpe: 8, targetWeightKg: 28, notes: "Hinge at hips, stretch hamstrings" },
-              { id: "e8", name: "Bulgarian Split Squat", sets: 3, reps: "10/leg", restSec: 60, rpe: 8.5, targetWeightKg: 14, notes: "Slight forward torso lean" },
-              { id: "e9", name: "Standing Calf Raises", sets: 4, reps: "12-15", restSec: 45, rpe: 9, targetWeightKg: 40, notes: "2s pause at bottom stretch" }
-            ]
-          },
-          {
-            id: "d3",
-            name: "Day 3 - Upper Body (Shoulders & Arms)",
-            exercises: [
-              { id: "e10", name: "Overhead Barbell Military Press", sets: 4, reps: "6-8", restSec: 90, rpe: 8, targetWeightKg: 40, notes: "Lock out overhead" },
-              { id: "e11", name: "Seated Cable Row", sets: 4, reps: "10-12", restSec: 60, rpe: 8, targetWeightKg: 50, notes: "Keep spine neutral" },
-              { id: "e12", name: "Dips / Push-ups", sets: 3, reps: "12-15", restSec: 60, rpe: 8.5, targetWeightKg: 0, notes: "Full range of motion" },
-              { id: "e13", name: "Incline Dumbbell Bicep Curls", sets: 3, reps: "12", restSec: 45, rpe: 9, targetWeightKg: 12, notes: "Supinate at top" },
-              { id: "e14", name: "Tricep Overhead Rope Extension", sets: 3, reps: "12-15", restSec: 45, rpe: 9, targetWeightKg: 20, notes: "Flared ropes at lockout" }
-            ]
-          },
-          {
-            id: "d4",
-            name: "Day 4 - Lower Body & Core (Posterior Chain)",
-            exercises: [
-              { id: "e15", name: "Conventional Barbell Deadlift", sets: 4, reps: "5", restSec: 150, rpe: 8.5, targetWeightKg: 100, notes: "Reset breath each rep, pull slack out of bar" },
-              { id: "e16", name: "Leg Press", sets: 3, reps: "12-15", restSec: 75, rpe: 8.5, targetWeightKg: 140, notes: "Feet shoulder-width middle plate" },
-              { id: "e17", name: "Lying Leg Curls", sets: 3, reps: "12", restSec: 60, rpe: 9, targetWeightKg: 35, notes: "Slow 3s eccentric" },
-              { id: "e18", name: "Hanging Knee / Leg Raises", sets: 3, reps: "15", restSec: 45, rpe: 8.5, targetWeightKg: 0, notes: "Controlled without swinging" }
-            ]
-          }
-        ]
-      }
-    ],
-
-    timelineEvents: [
-      {
-        id: "tl-anindita-1",
-        clientId: "client-1",
-        eventType: "client_created",
-        title: "Client Onboarded (Prepaid)",
-        description: "Account activated with 12 prepaid sessions. Upfront fee: ₹18,000 (Paid).",
-        timestamp: "2026-10-15T09:00:00Z"
-      },
-      {
-        id: "tl-anindita-2",
-        clientId: "client-1",
-        eventType: "sessions_scheduled",
-        title: "Training Schedule Initialized",
-        description: "Auto-scheduled 12 sessions on Mon/Wed/Fri at 10:00 AM.",
-        timestamp: "2026-10-15T09:05:00Z"
-      },
-      {
-        id: "tl-anindita-3",
-        clientId: "client-1",
-        eventType: "session_completed",
-        title: "Training Session Completed",
-        description: "Offline 1-on-1 Studio Session completed. Workout: Day 1 - Upper Body (Chest & Back Focus) (4,250 kg volume).",
-        timestamp: "2026-11-03T11:00:00Z"
-      }
-    ]
+    templates: []
   };
 }
