@@ -219,14 +219,16 @@ export function parseNotepadWorkout(rawText) {
     }
 
     // 5. Check for multi-line set syntax under current exercise, e.g.:
-    // "Set 1: 60kg x 10", "60kg x 10", "10 reps @ 60kg", "10 x 60kg"
-    const singleSetMatch = line.match(/^(?:set\s*\d+[:\s]+)?([0-9.]+)\s*(?:kg|kilos|lbs)?\s*([xX*@])\s*([0-9]+)\s*(?:reps?)?/i)
-      || line.match(/^(?:set\s*\d+[:\s]+)?([0-9]+)\s*reps?\s*[@xX*]\s*([0-9.]+)\s*(?:kg|kilos|lbs)?/i);
+    // "Set 1: 60kg x 10", "60kg x 10", "10 reps @ 60kg", "10 x 60kg", "Set 1: 45s @ bw"
+    const singleSetMatch = line.match(/^(?:set\s*\d+[:\s]+)?([0-9.]+)\s*(?:kg|kilos|lbs)?\s*([xX*@])\s*([0-9]+)\s*(s|sec|secs|seconds|reps?)?/i)
+      || line.match(/^(?:set\s*\d+[:\s]+)?([0-9]+)\s*(s|sec|secs|seconds|reps?)?\s*[@xX*]\s*([0-9.]+)\s*(?:kg|kilos|lbs)?/i);
 
     if (currentExercise && singleSetMatch) {
       let weight = parseFloat(singleSetMatch[1]);
       let reps = parseInt(singleSetMatch[3] || singleSetMatch[2], 10);
+      let seconds = '';
       
+      const isSeconds = line.match(/\b(?:s|sec|secs|seconds)\b/i);
       if (line.match(/reps?\s*[@]/i)) {
         reps = parseInt(singleSetMatch[1], 10);
         weight = parseFloat(singleSetMatch[2]);
@@ -235,10 +237,16 @@ export function parseNotepadWorkout(rawText) {
         reps = parseInt(singleSetMatch[1], 10);
       }
 
+      if (isSeconds) {
+        seconds = reps;
+        reps = '';
+      }
+
       currentExercise.sets.push({
         setNum: currentExercise.sets.length + 1,
         weightKg: isNaN(weight) ? (currentExercise.sets[0]?.weightKg || 50) : weight,
-        reps: isNaN(reps) ? (currentExercise.sets[0]?.reps || 10) : reps,
+        reps: reps,
+        seconds: seconds,
         completed: true
       });
       continue;
@@ -270,6 +278,7 @@ export function parseNotepadWorkout(rawText) {
         setNum: idx + 1,
         weightKg: parseFloat(m[1]) || 50,
         reps: parseInt(m[2], 10) || 10,
+        seconds: '',
         completed: true
       }));
 
@@ -285,26 +294,31 @@ export function parseNotepadWorkout(rawText) {
       continue;
     }
 
-    // 8. Check for comma-separated or slash-separated reps format:
-    // e.g., "Incline DB Press 22kg 12, 10, 10" or "Lat Pulldown 55kg 12, 12, 10" or "Lateral Raises 4kg 15/15/14"
-    const commaRepsMatch = cleanLine.match(/(.*?)\s+([0-9.]+\s*(?:kg|kilos|lbs|bw)?)\s*[:\s]+([0-9]+(?:\s*[,/]\s*[0-9]+)+)/i);
+    // 8. Check for comma-separated or slash-separated reps/seconds format:
+    // e.g., "Incline DB Press 22kg 12, 10, 10" or "Plank bw: 45s, 60s, 60s" or "Lateral Raises 4kg 15/15/14"
+    const commaRepsMatch = cleanLine.match(/(.*?)\s+([0-9.]+\s*(?:kg|kilos|lbs|bw)?)\s*[:\s]+([0-9a-zA-Z]+(?:\s*[,/]\s*[0-9a-zA-Z]+)+)/i);
     if (commaRepsMatch) {
       const exName = commaRepsMatch[1].replace(/[:,-]+$/, '').trim() || 'Exercise';
       const rawWeight = commaRepsMatch[2].toLowerCase().replace(/[^0-9.]/g, '');
       const weightNum = parseFloat(rawWeight) || (commaRepsMatch[2].includes('bw') ? 0 : 50);
-      const repsArray = commaRepsMatch[3].split(/[,/]/).map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
+      const itemsArray = commaRepsMatch[3].split(/[,/]/).map(r => r.trim()).filter(Boolean);
 
-      const sets = repsArray.map((r, idx) => ({
-        setNum: idx + 1,
-        weightKg: weightNum,
-        reps: r,
-        completed: true
-      }));
+      const sets = itemsArray.map((item, idx) => {
+        const isSec = item.toLowerCase().includes('s');
+        const numVal = parseInt(item.replace(/[^0-9]/g, ''), 10) || 10;
+        return {
+          setNum: idx + 1,
+          weightKg: weightNum,
+          reps: isSec ? '' : numVal,
+          seconds: isSec ? numVal : '',
+          completed: true
+        };
+      });
 
       currentExercise = {
         id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
         name: exName,
-        prescribedText: `${sets.length} sets × ${repsArray.join(', ')} @ ${weightNum} kg`,
+        prescribedText: `${sets.length} sets logged @ ${weightNum} kg`,
         notes: exerciseNote,
         alternative: '',
         sets
@@ -330,24 +344,26 @@ export function parseNotepadWorkout(rawText) {
       }
     }
 
-    // Check for NxM sets x reps: "3x10", "4 x 8-10", "3*12"
-    const setsRepsMatch = cleanLine.match(/[:\s]+(\d+)\s*[xX*]\s*([0-9]+)(?:-[0-9]+)?/);
+    // Check for NxM sets x reps/seconds: "3x10", "4 x 8-10", "3*12", "3x45s"
+    const setsRepsMatch = cleanLine.match(/[:\s]+(\d+)\s*[xX*]\s*([0-9]+)(?:-[0-9]+)?\s*(s|sec|secs|seconds|reps)?/i);
     if (setsRepsMatch) {
       const numSets = Math.min(Math.max(parseInt(setsRepsMatch[1], 10) || 3, 1), 10);
-      const reps = parseInt(setsRepsMatch[2], 10) || 10;
+      const val = parseInt(setsRepsMatch[2], 10) || 10;
+      const isSec = !!setsRepsMatch[3]?.toLowerCase().startsWith('s');
       const exName = cleanLine.substring(0, setsRepsMatch.index).replace(/[:,-]+$/, '').trim() || 'Exercise';
 
       const sets = Array.from({ length: numSets }).map((_, idx) => ({
         setNum: idx + 1,
         weightKg: targetWeight,
-        reps: reps,
+        reps: isSec ? '' : val,
+        seconds: isSec ? val : '',
         completed: true
       }));
 
       currentExercise = {
         id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
         name: exName,
-        prescribedText: `${numSets} sets × ${reps} reps @ ${targetWeight} kg`,
+        prescribedText: `${numSets} sets × ${isSec ? `${val}s` : `${val} reps`} @ ${targetWeight} kg`,
         notes: exerciseNote,
         alternative: '',
         sets
@@ -374,9 +390,9 @@ export function parseNotepadWorkout(rawText) {
       );
 
       const sets = nextIsSet ? [] : [
-        { setNum: 1, weightKg: finalWeight, reps: 10, completed: true },
-        { setNum: 2, weightKg: finalWeight, reps: 10, completed: true },
-        { setNum: 3, weightKg: finalWeight, reps: 10, completed: true }
+        { setNum: 1, weightKg: finalWeight, reps: 10, seconds: '', completed: true },
+        { setNum: 2, weightKg: finalWeight, reps: 10, seconds: '', completed: true },
+        { setNum: 3, weightKg: finalWeight, reps: 10, seconds: '', completed: true }
       ];
 
       currentExercise = {
@@ -400,9 +416,9 @@ export function parseNotepadWorkout(rawText) {
       notes: '',
       alternative: '',
       sets: [
-        { setNum: 1, weightKg: 50, reps: 10, completed: true },
-        { setNum: 2, weightKg: 50, reps: 10, completed: true },
-        { setNum: 3, weightKg: 50, reps: 10, completed: true }
+        { setNum: 1, weightKg: 50, reps: 10, seconds: '', completed: true },
+        { setNum: 2, weightKg: 50, reps: 10, seconds: '', completed: true },
+        { setNum: 3, weightKg: 50, reps: 10, seconds: '', completed: true }
       ]
     });
   }
@@ -428,11 +444,18 @@ export function convertWorkoutToNotepadText(dayOrWorkout) {
     if (ex.sets && Array.isArray(ex.sets) && typeof ex.sets[0] === 'object') {
       const weights = ex.sets.map(s => Number(s.weightKg) || 0);
       const allSameWeight = weights.every(w => w === weights[0]);
+      const formatSetMetric = (s) => {
+        const hasReps = s.reps !== undefined && s.reps !== null && s.reps !== '' && Number(s.reps) > 0;
+        const hasSecs = s.seconds !== undefined && s.seconds !== null && s.seconds !== '' && Number(s.seconds) > 0;
+        if (hasReps && hasSecs) return `${s.reps}r ${s.seconds}s`;
+        if (hasSecs) return `${s.seconds}s`;
+        return `${hasReps ? s.reps : 10}`;
+      };
       if (allSameWeight && weights[0] !== undefined) {
-        const repsList = ex.sets.map(s => s.reps).join(', ');
+        const repsList = ex.sets.map(formatSetMetric).join(', ');
         lines.push(`${ex.name} ${weights[0]}kg ${repsList}${ex.notes ? ` - ${ex.notes}` : ''}`);
       } else {
-        const setStrings = ex.sets.map(s => `${s.weightKg}kg x ${s.reps}`).join(', ');
+        const setStrings = ex.sets.map(s => `${s.weightKg}kg x ${formatSetMetric(s)}`).join(', ');
         lines.push(`${ex.name}: ${setStrings}${ex.notes ? ` - ${ex.notes}` : ''}`);
       }
     } else {

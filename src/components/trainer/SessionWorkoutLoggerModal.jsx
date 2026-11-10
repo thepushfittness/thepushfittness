@@ -115,7 +115,8 @@ export function SessionWorkoutLoggerModal({
         sets: (ex.sets || []).map((s, sIdx) => ({
           setNum: s.setNum || sIdx + 1,
           weightKg: s.weightKg !== undefined ? s.weightKg : (s.targetWeightKg || 50),
-          reps: s.reps !== undefined ? s.reps : (s.targetReps || 10),
+          reps: s.reps !== undefined ? s.reps : (s.targetReps || ''),
+          seconds: s.seconds !== undefined ? s.seconds : (s.durationSeconds || ''),
           completed: s.completed !== undefined ? s.completed : true
         }))
       }));
@@ -153,9 +154,9 @@ export function SessionWorkoutLoggerModal({
     notes: '',
     alternative: '',
     sets: [
-      { setNum: 1, weightKg: 50, reps: 10, completed: true },
-      { setNum: 2, weightKg: 50, reps: 10, completed: true },
-      { setNum: 3, weightKg: 50, reps: 10, completed: true }
+      { setNum: 1, weightKg: 50, reps: 10, seconds: '', completed: true },
+      { setNum: 2, weightKg: 50, reps: 10, seconds: '', completed: true },
+      { setNum: 3, weightKg: 50, reps: 10, seconds: '', completed: true }
     ]
   });
 
@@ -167,7 +168,10 @@ export function SessionWorkoutLoggerModal({
 
     const loadedExs = (day.exercises || []).map((ex, exIdx) => {
       const numSets = Number(ex.sets) || 3;
-      const parsedReps = parseInt(String(ex.reps || '10').replace(/[^0-9]/g, '')) || 10;
+      const repStr = String(ex.reps || '');
+      const timeMatch = repStr.toLowerCase().match(/(\d+)\s*(?:s|sec|secs|seconds)\b/);
+      const parsedSeconds = timeMatch ? parseInt(timeMatch[1], 10) : (ex.seconds || '');
+      const parsedReps = timeMatch ? '' : (parseInt(repStr.replace(/[^0-9]/g, '')) || 10);
       const targetWeight = Number(ex.targetWeightKg) || (Array.isArray(ex.targetWeights) ? Number(ex.targetWeights[0]) : 50) || 50;
       
       const sets = Array.from({ length: numSets }).map((_, sIdx) => {
@@ -179,6 +183,7 @@ export function SessionWorkoutLoggerModal({
           setNum: sIdx + 1,
           weightKg: setWeight,
           reps: parsedReps,
+          seconds: parsedSeconds,
           completed: true
         };
       });
@@ -227,6 +232,7 @@ export function SessionWorkoutLoggerModal({
       setNum: curSets.length + 1,
       weightKg: lastSet ? lastSet.weightKg : 50,
       reps: lastSet ? lastSet.reps : 10,
+      seconds: lastSet ? (lastSet.seconds || '') : '',
       completed: true
     });
     setExercises(updated);
@@ -324,7 +330,8 @@ export function SessionWorkoutLoggerModal({
           sets: ex.sets.map(s => ({
             setNum: s.setNum,
             weightKg: Number(s.weightKg) || 0,
-            reps: Number(s.reps) || 0,
+            reps: s.reps !== '' && s.reps !== null && !isNaN(Number(s.reps)) ? Number(s.reps) : 0,
+            seconds: s.seconds !== '' && s.seconds !== null && !isNaN(Number(s.seconds)) ? Number(s.seconds) : 0,
             completed: !!s.completed
           }))
         })),
@@ -869,10 +876,10 @@ RPE: 8`}
                     <thead className="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-800">
                       <tr>
                         <th className="py-2 px-3 w-16 text-center">Set</th>
-                        <th className="py-2 px-3 w-32 text-center">Weight (kg)</th>
-                        <th className="py-2 px-3 w-28 text-center">Reps</th>
-                        <th className="py-2 px-3 w-28 text-center">Done?</th>
-                        <th className="py-2 px-3 text-right w-16"></th>
+                        <th className="py-2 px-3 w-28 text-center">Weight (kg)</th>
+                        <th className="py-2 px-3 text-center">Reps / Seconds</th>
+                        <th className="py-2 px-3 w-24 text-center">Done?</th>
+                        <th className="py-2 px-3 text-right w-12"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
@@ -897,12 +904,29 @@ RPE: 8`}
                             </div>
                           </td>
                           <td className="py-2 px-3 text-center">
-                            <input
-                              type="number"
-                              value={set.reps}
-                              onChange={(e) => handleSetChange(exIdx, sIdx, 'reps', e.target.value)}
-                              className="w-16 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-lg px-2 py-1 text-center font-bold text-white text-xs outline-none"
-                            />
+                            <div className="inline-flex items-center space-x-1.5 justify-center">
+                              <div className="flex items-center space-x-1" title="Repetitions">
+                                <input
+                                  type="number"
+                                  value={set.reps !== undefined && set.reps !== null ? set.reps : ''}
+                                  onChange={(e) => handleSetChange(exIdx, sIdx, 'reps', e.target.value)}
+                                  placeholder="0"
+                                  className="w-14 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-lg px-1.5 py-1 text-center font-bold text-white text-xs outline-none"
+                                />
+                                <span className="text-slate-400 text-[10px]">reps</span>
+                              </div>
+                              <span className="text-slate-600 font-bold text-xs">•</span>
+                              <div className="flex items-center space-x-1" title="Hold time / duration in seconds">
+                                <input
+                                  type="number"
+                                  value={set.seconds !== undefined && set.seconds !== null ? set.seconds : ''}
+                                  onChange={(e) => handleSetChange(exIdx, sIdx, 'seconds', e.target.value)}
+                                  placeholder="0"
+                                  className="w-14 bg-slate-900 border border-slate-700 focus:border-cyan-400 rounded-lg px-1.5 py-1 text-center font-bold text-cyan-300 text-xs outline-none"
+                                />
+                                <span className="text-cyan-400 text-[10px]">sec</span>
+                              </div>
+                            </div>
                           </td>
                           <td className="py-2 px-3 text-center">
                             <button

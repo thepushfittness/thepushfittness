@@ -139,7 +139,11 @@ export function CompletedWorkoutViewModal({
                       <span className="font-bold text-[10px] text-slate-400">Set {s.setNum}:</span>
                       <span className="font-bold font-mono text-white">{s.weightKg} kg</span>
                       <span className="text-slate-400">×</span>
-                      <span className="font-bold text-white">{s.reps} reps</span>
+                      <span className="font-bold text-white">
+                        {s.reps && Number(s.reps) > 0 ? `${s.reps} reps` : ''}
+                        {s.reps && Number(s.reps) > 0 && s.seconds && Number(s.seconds) > 0 ? ' • ' : ''}
+                        {s.seconds && Number(s.seconds) > 0 ? `${s.seconds}s` : (!s.reps || Number(s.reps) === 0 ? '0 reps' : '')}
+                      </span>
                       {s.completed !== false && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
                     </div>
                   ))}
