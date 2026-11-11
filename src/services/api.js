@@ -253,7 +253,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/system/restore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ snapshot })
+      body: JSON.stringify({ snapshot, force: true })
     });
     if (!res.ok) throw new Error('Failed to restore snapshot to server.');
     return res.json();

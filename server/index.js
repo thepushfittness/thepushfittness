@@ -777,7 +777,7 @@ app.get('/api/system/snapshot', authenticateToken, requireTrainer, (req, res) =>
 });
 
 app.post('/api/system/restore', (req, res) => {
-  const { snapshot } = req.body;
+  const { snapshot, force } = req.body;
   if (!snapshot || !Array.isArray(snapshot.users) || !Array.isArray(snapshot.clients)) {
     return res.status(400).json({ error: 'Invalid snapshot payload' });
   }
@@ -786,8 +786,8 @@ app.post('/api/system/restore', (req, res) => {
   const serverClientCount = db.data.clients?.length || 0;
   const incomingClientCount = snapshot.clients?.length || 0;
 
-  // Restore if incoming snapshot has newer timestamp, OR if server currently has 0 clients while snapshot has clients
-  if (incomingTime > serverTime || (serverClientCount === 0 && incomingClientCount > 0)) {
+  // Restore if force requested, or incoming snapshot has newer timestamp, OR if server currently has 0 clients while snapshot has clients
+  if (force === true || incomingTime > serverTime || (serverClientCount === 0 && incomingClientCount > 0)) {
     db.restoreSnapshot(snapshot);
     return res.json({ 
       success: true, 

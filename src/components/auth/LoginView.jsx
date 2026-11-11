@@ -22,6 +22,7 @@ export function LoginView() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isWakingUp, setIsWakingUp] = useState(false);
   
   // Forgot Password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -36,14 +37,36 @@ export function LoginView() {
       return;
     }
 
+    let wakeTimer = null;
     try {
       setLoading(true);
+      setIsWakingUp(false);
       setErrorMessage('');
+
+      // If cloud server is waking from overnight idle sleep (Render free tier), reassure the user
+      wakeTimer = setTimeout(() => {
+        setIsWakingUp(true);
+      }, 2500);
+
       await login(email.trim(), password.trim());
     } catch (err) {
-      setErrorMessage(err.message || 'Invalid email or password. Please try again.');
+      const msg = err.message || '';
+      if (
+        msg.includes('Failed to fetch') ||
+        msg.includes('NetworkError') ||
+        msg.includes('Load failed') ||
+        msg.includes('502') ||
+        msg.includes('503') ||
+        msg.includes('Failed to connect')
+      ) {
+        setErrorMessage('Studio server is starting up after overnight standby. Please wait 15–20 seconds and tap Sign In again.');
+      } else {
+        setErrorMessage(msg || 'Invalid email or password. Please try again.');
+      }
     } finally {
+      if (wakeTimer) clearTimeout(wakeTimer);
       setLoading(false);
+      setIsWakingUp(false);
     }
   };
 
@@ -151,6 +174,14 @@ export function LoginView() {
                 </button>
               </div>
             </div>
+
+            {/* Cold-start wake up notice */}
+            {loading && isWakingUp && (
+              <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl flex items-center space-x-2.5 text-xs text-amber-300 animate-fadeIn">
+                <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>Connecting to studio server (waking from overnight standby, please hold on ~20s)...</span>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
