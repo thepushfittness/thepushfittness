@@ -142,6 +142,42 @@ export const CONDITIONING_WOD_PRESETS = [
   }
 ];
 
+// Helper to identify common bodyweight movements
+export function isBodyweightExercise(name = '') {
+  if (!name || typeof name !== 'string') return false;
+  const n = name.toLowerCase().trim();
+  return (
+    n.includes('push-up') ||
+    n.includes('push up') ||
+    n.includes('pushup') ||
+    n.includes('pull-up') ||
+    n.includes('pull up') ||
+    n.includes('pullup') ||
+    n.includes('chin-up') ||
+    n.includes('chin up') ||
+    n.includes('chinup') ||
+    n.includes('dip') ||
+    n.includes('plank') ||
+    n.includes('crunch') ||
+    n.includes('sit-up') ||
+    n.includes('sit up') ||
+    n.includes('situp') ||
+    n.includes('burpee') ||
+    n.includes('jumping jack') ||
+    n.includes('mountain climber') ||
+    n.includes('bodyweight squat') ||
+    n.includes('air squat') ||
+    n.includes('hanging leg') ||
+    n.includes('knee raise') ||
+    n.includes('flutter kick') ||
+    n.includes('hollow hold') ||
+    n.includes('bear crawl') ||
+    (n.includes('lunge') && !n.includes('dumbbell') && !n.includes('barbell') && !n.includes('db')) ||
+    n.includes('bw') ||
+    n.includes('bodyweight')
+  );
+}
+
 export function parseNotepadText(rawText) {
   const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
   const exercises = [];
@@ -213,12 +249,15 @@ export function parseNotepadText(rawText) {
 
     if (!exerciseName) exerciseName = 'Exercise';
 
+    const isBw = isBodyweightExercise(exerciseName) || cleanLine.toLowerCase().includes('bw');
+    const finalTargetWeight = targetWeightKg ? targetWeightKg : (isBw ? 'BW' : '0');
+
     exercises.push({
       id: `ex-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       name: exerciseName,
       sets: sets,
       reps: reps,
-      targetWeightKg: targetWeightKg || '60',
+      targetWeightKg: finalTargetWeight,
       restSeconds: 90,
       tempo: '2-0-1-0',
       notes: notes,
@@ -349,10 +388,11 @@ export function parseNotepadWorkout(rawText) {
         reps = '';
       }
 
+      const defaultWeight = isBodyweightExercise(currentExercise.name) ? 0 : 0;
       currentExercise.sets.push({
         setNum: currentExercise.sets.length + 1,
-        weight: isNaN(weight) ? (currentExercise.sets[0]?.weightKg || 50) : weight,
-        weightKg: isNaN(weight) ? (currentExercise.sets[0]?.weightKg || 50) : weight,
+        weight: isNaN(weight) ? (currentExercise.sets[0]?.weightKg ?? defaultWeight) : weight,
+        weightKg: isNaN(weight) ? (currentExercise.sets[0]?.weightKg ?? defaultWeight) : weight,
         weightUnit: isLbs ? 'lbs' : (currentExercise.sets[0]?.weightUnit || 'kg'),
         reps: reps,
         seconds: seconds,
@@ -385,7 +425,7 @@ export function parseNotepadWorkout(rawText) {
       let exName = cleanLine.substring(0, firstIndex).replace(/[:,-]+$/, '').trim() || 'Exercise';
       const sets = allMatches.map((m, idx) => {
         const isLbs = (m[2] && m[2].toLowerCase() === 'lbs') || cleanLine.toLowerCase().includes('lbs');
-        const numWeight = parseFloat(m[1]) || 50;
+        const numWeight = parseFloat(m[1]) || 0;
         return {
           setNum: idx + 1,
           weight: numWeight,
@@ -397,10 +437,15 @@ export function parseNotepadWorkout(rawText) {
         };
       });
 
+      const hasWeight = sets.some(s => s.weightKg > 0);
+      const setSummary = hasWeight 
+        ? sets.map(s => `${s.weightKg > 0 ? `${s.weightKg}${s.weightUnit}×` : ''}${s.reps || `${s.seconds}s`}`).join(', ')
+        : `${sets.map(s => s.reps || `${s.seconds}s`).join(', ')}`;
+
       currentExercise = {
         id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
         name: exName,
-        prescribedText: `${sets.length} sets logged (${sets.map(s => `${s.weightKg}${s.weightUnit}×${s.reps}`).join(', ')})`,
+        prescribedText: `${sets.length} sets logged (${setSummary}${hasWeight ? '' : ' - Bodyweight'})`,
         notes: exerciseNote,
         alternative: '',
         sets
@@ -416,7 +461,8 @@ export function parseNotepadWorkout(rawText) {
       const exName = commaRepsMatch[1].replace(/[:,-]+$/, '').trim() || 'Exercise';
       const isLbs = commaRepsMatch[2].toLowerCase().includes('lbs') || cleanLine.toLowerCase().includes('lbs');
       const rawWeight = commaRepsMatch[2].toLowerCase().replace(/[^0-9.]/g, '');
-      const weightNum = parseFloat(rawWeight) || (commaRepsMatch[2].includes('bw') ? 0 : (isLbs ? 100 : 50));
+      const isBw = commaRepsMatch[2].toLowerCase().includes('bw') || isBodyweightExercise(exName);
+      const weightNum = rawWeight !== '' && !isNaN(parseFloat(rawWeight)) ? parseFloat(rawWeight) : 0;
       const itemsArray = commaRepsMatch[3].split(/[,/]/).map(r => r.trim()).filter(Boolean);
 
       const sets = itemsArray.map((item, idx) => {
@@ -433,10 +479,11 @@ export function parseNotepadWorkout(rawText) {
         };
       });
 
+      const weightLabel = weightNum > 0 ? ` @ ${weightNum} ${isLbs ? 'lbs' : 'kg'}` : (isBw ? ' (Bodyweight)' : '');
       currentExercise = {
         id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
         name: exName,
-        prescribedText: `${sets.length} sets logged @ ${weightNum} ${isLbs ? 'lbs' : 'kg'}`,
+        prescribedText: `${sets.length} sets logged${weightLabel}`,
         notes: exerciseNote,
         alternative: '',
         sets
@@ -446,21 +493,25 @@ export function parseNotepadWorkout(rawText) {
     }
 
     // 9. Check for standard "3x10 @ 60kg" or "60kg 3x10" or "Bench Press 4x8-10 60kg" or "3x10 @ 35lbs"
-    let targetWeight = 50;
+    let targetWeight = 0;
+    let hasExplicitWeight = false;
     let targetUnit = 'kg';
     const parenWeight = cleanLine.match(/\(([0-9.]+)\s*(kg|lbs)?\)/i);
     if (parenWeight) {
-      targetWeight = parseFloat(parenWeight[1]) || 50;
+      targetWeight = parseFloat(parenWeight[1]) || 0;
+      hasExplicitWeight = true;
       if (parenWeight[2]?.toLowerCase() === 'lbs') targetUnit = 'lbs';
       cleanLine = cleanLine.replace(/\([^)]+\)/, '').trim();
     } else {
       const atMatch = cleanLine.match(/[@\s]+([0-9.]+)\s*(kg|kilos|lbs)\b/i);
       if (atMatch) {
-        targetWeight = parseFloat(atMatch[1]) || 50;
+        targetWeight = parseFloat(atMatch[1]) || 0;
+        hasExplicitWeight = true;
         if (atMatch[2]?.toLowerCase() === 'lbs') targetUnit = 'lbs';
         cleanLine = cleanLine.replace(/[@\s]+[0-9.]+\s*(?:kg|kilos|lbs)\b/i, '').trim();
       } else if (cleanLine.toLowerCase().includes(' bw') || cleanLine.toLowerCase().includes('bodyweight')) {
         targetWeight = 0;
+        hasExplicitWeight = true;
         cleanLine = cleanLine.replace(/\b(bodyweight|bw)\b/i, '').trim();
       }
     }
@@ -474,6 +525,7 @@ export function parseNotepadWorkout(rawText) {
       const val = parseInt(setsRepsMatch[2], 10) || 10;
       const isSec = !!setsRepsMatch[3]?.toLowerCase().startsWith('s');
       const exName = cleanLine.substring(0, setsRepsMatch.index).replace(/[:,-]+$/, '').trim() || 'Exercise';
+      const isBw = isBodyweightExercise(exName) || cleanLine.toLowerCase().includes('bw') || targetWeight === 0;
 
       const sets = Array.from({ length: numSets }).map((_, idx) => ({
         setNum: idx + 1,
@@ -485,10 +537,11 @@ export function parseNotepadWorkout(rawText) {
         completed: true
       }));
 
+      const weightPart = (hasExplicitWeight && targetWeight > 0) ? ` @ ${targetWeight} ${targetUnit}` : (isBw ? ' (Bodyweight)' : '');
       currentExercise = {
         id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
         name: exName,
-        prescribedText: `${numSets} sets × ${isSec ? `${val}s` : `${val} reps`} @ ${targetWeight} ${targetUnit}`,
+        prescribedText: `${numSets} sets × ${isSec ? `${val}s` : `${val} reps`}${weightPart}`,
         notes: exerciseNote,
         alternative: '',
         sets
@@ -500,15 +553,18 @@ export function parseNotepadWorkout(rawText) {
     // 10. Check if this is a header for multi-line sets (e.g. "Squat" or "Squats 80kg" or "DB Press 35lbs")
     const trailingWeightMatch = cleanLine.match(/\s+([0-9.]+)\s*(kg|lbs)?$/i);
     let finalWeight = targetWeight;
+    let hasTrailingWeight = hasExplicitWeight;
     let exName = cleanLine;
     if (trailingWeightMatch) {
-      finalWeight = parseFloat(trailingWeightMatch[1]) || targetWeight;
+      finalWeight = parseFloat(trailingWeightMatch[1]) || 0;
+      hasTrailingWeight = true;
       if (trailingWeightMatch[2]?.toLowerCase() === 'lbs') targetUnit = 'lbs';
       exName = cleanLine.substring(0, trailingWeightMatch.index).trim();
     }
 
     exName = exName.replace(/[:,-]+$/, '').trim();
     if (exName && exName.length >= 2) {
+      const isBw = isBodyweightExercise(exName) || finalWeight === 0;
       const nextLine = lines[i + 1];
       const nextIsSet = nextLine && (
         nextLine.match(/^(?:set\s*\d+[:\s]+)?[0-9.]+\s*(?:kg|kilos|lbs)?\s*[xX*@]\s*[0-9]+/i) ||
@@ -521,10 +577,11 @@ export function parseNotepadWorkout(rawText) {
         { setNum: 3, weight: finalWeight, weightKg: finalWeight, weightUnit: targetUnit, reps: 10, seconds: '', completed: true }
       ];
 
+      const weightPart = (hasTrailingWeight && finalWeight > 0) ? ` @ ${finalWeight} ${targetUnit}` : (isBw ? ' (Bodyweight)' : '');
       currentExercise = {
         id: `ex-${Date.now()}-${exercises.length + 1}-${Math.random().toString(36).substr(2, 4)}`,
         name: exName,
-        prescribedText: nextIsSet ? '' : `3 sets @ ${finalWeight} ${targetUnit}`,
+        prescribedText: nextIsSet ? '' : `3 sets${weightPart}`,
         notes: exerciseNote,
         alternative: '',
         sets
@@ -542,9 +599,9 @@ export function parseNotepadWorkout(rawText) {
       notes: '',
       alternative: '',
       sets: [
-        { setNum: 1, weight: 50, weightKg: 50, weightUnit: 'kg', reps: 10, seconds: '', completed: true },
-        { setNum: 2, weight: 50, weightKg: 50, weightUnit: 'kg', reps: 10, seconds: '', completed: true },
-        { setNum: 3, weight: 50, weightKg: 50, weightUnit: 'kg', reps: 10, seconds: '', completed: true }
+        { setNum: 1, weight: 0, weightKg: 0, weightUnit: 'kg', reps: 10, seconds: '', completed: true },
+        { setNum: 2, weight: 0, weightKg: 0, weightUnit: 'kg', reps: 10, seconds: '', completed: true },
+        { setNum: 3, weight: 0, weightKg: 0, weightUnit: 'kg', reps: 10, seconds: '', completed: true }
       ]
     });
   }
@@ -578,16 +635,23 @@ export function convertWorkoutToNotepadText(dayOrWorkout) {
         return `${hasReps ? s.reps : 10}`;
       };
       const unit = ex.sets[0]?.weightUnit || 'kg';
+      const isBw = isBodyweightExercise(ex.name) || weights.every(w => w === 0);
       if (allSameWeight && weights[0] !== undefined) {
         const repsList = ex.sets.map(formatSetMetric).join(', ');
-        lines.push(`${ex.name} ${weights[0]}${unit} ${repsList}${ex.notes ? ` - ${ex.notes}` : ''}`);
+        const weightTag = weights[0] > 0 ? ` ${weights[0]}${unit}` : (isBw ? ' bw' : '');
+        lines.push(`${ex.name}${weightTag}: ${repsList}${ex.notes ? ` - ${ex.notes}` : ''}`);
       } else {
-        const setStrings = ex.sets.map(s => `${s.weight !== undefined ? s.weight : s.weightKg}${s.weightUnit || 'kg'} x ${formatSetMetric(s)}`).join(', ');
+        const setStrings = ex.sets.map(s => {
+          const w = Number(s.weight !== undefined ? s.weight : s.weightKg) || 0;
+          const wStr = w > 0 ? `${w}${s.weightUnit || unit} x ` : (isBw ? 'bw x ' : '');
+          return `${wStr}${formatSetMetric(s)}`;
+        }).join(', ');
         lines.push(`${ex.name}: ${setStrings}${ex.notes ? ` - ${ex.notes}` : ''}`);
       }
     } else {
-      const targetWeight = ex.targetWeightKg ? `${ex.targetWeightKg}kg` : '50kg';
-      lines.push(`${ex.name} ${ex.sets || 3}x${ex.reps || 10} @ ${targetWeight}${ex.notes ? ` - ${ex.notes}` : ''}`);
+      const isBw = isBodyweightExercise(ex.name) || !ex.targetWeightKg || ex.targetWeightKg === '0' || ex.targetWeightKg === 0 || ex.targetWeightKg === 'BW';
+      const targetWeight = (!isBw && ex.targetWeightKg && Number(ex.targetWeightKg) > 0) ? ` @ ${ex.targetWeightKg}kg` : (isBw ? ' (bw)' : '');
+      lines.push(`${ex.name} ${ex.sets || 3}x${ex.reps || 10}${targetWeight}${ex.notes ? ` - ${ex.notes}` : ''}`);
     }
   });
 

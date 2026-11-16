@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
-import { useNotifications } from '../../context/NotificationContext';
-import { parseNotepadWorkout, convertWorkoutToNotepadText, CONDITIONING_FORMATS, CONDITIONING_WOD_PRESETS } from './workoutUtils';
+import { parseNotepadWorkout, convertWorkoutToNotepadText, isBodyweightExercise, CONDITIONING_FORMATS, CONDITIONING_WOD_PRESETS } from './workoutUtils';
 import { 
   Dumbbell, 
   Calendar, 
@@ -121,21 +120,40 @@ export function SessionWorkoutLoggerModal({
       const hasLbs = wd.weightUnit === 'lbs' || (wd.exercises || []).some(ex => (ex.sets || []).some(s => s.weightUnit === 'lbs'));
       setGlobalUnit(hasLbs ? 'lbs' : (wd.weightUnit || 'kg'));
 
-      const loadedExs = (wd.exercises || []).map((ex, exIdx) => ({
-        id: ex.id || `ex-${exIdx}-${Date.now()}`,
-        name: ex.name || 'Exercise',
-        prescribedText: ex.prescribedText || '',
-        notes: ex.notes || '',
-        alternative: ex.alternative || '',
-        sets: (ex.sets || []).map((s, sIdx) => ({
-          setNum: s.setNum || sIdx + 1,
-          weightKg: s.weight !== undefined && s.weight !== null ? s.weight : (s.weightKg !== undefined ? s.weightKg : (s.targetWeightKg || 50)),
-          weightUnit: s.weightUnit || (hasLbs ? 'lbs' : (wd.weightUnit || 'kg')),
-          reps: s.reps !== undefined ? s.reps : (s.targetReps || ''),
-          seconds: s.seconds !== undefined ? s.seconds : (s.durationSeconds || ''),
-          completed: s.completed !== undefined ? s.completed : true
-        }))
-      }));
+      const loadedExs = (wd.exercises || []).map((ex, exIdx) => {
+        const isBw = isBodyweightExercise(ex.name || '');
+        let cleanPrescribed = ex.prescribedText || '';
+        if (isBw && cleanPrescribed.includes('@ 50')) {
+          cleanPrescribed = cleanPrescribed.replace(/@\s*50\s*(?:kg|lbs)?/gi, '(Bodyweight)').trim();
+        }
+
+        return {
+          id: ex.id || `ex-${exIdx}-${Date.now()}`,
+          name: ex.name || 'Exercise',
+          prescribedText: cleanPrescribed,
+          notes: ex.notes || '',
+          alternative: ex.alternative || '',
+          sets: (ex.sets || []).map((s, sIdx) => {
+            const rawWeight = s.weight !== undefined && s.weight !== null && !isNaN(Number(s.weight))
+              ? Number(s.weight)
+              : (s.weightKg !== undefined && s.weightKg !== null && !isNaN(Number(s.weightKg))
+                ? Number(s.weightKg)
+                : ((s.targetWeightKg !== undefined && s.targetWeightKg !== '' && !isNaN(Number(s.targetWeightKg)))
+                  ? Number(s.targetWeightKg)
+                  : 0));
+            const finalWeight = (isBw && rawWeight === 50) ? 0 : rawWeight;
+
+            return {
+              setNum: s.setNum || sIdx + 1,
+              weightKg: finalWeight,
+              weightUnit: s.weightUnit || (hasLbs ? 'lbs' : (wd.weightUnit || 'kg')),
+              reps: s.reps !== undefined ? s.reps : (s.targetReps || ''),
+              seconds: s.seconds !== undefined ? s.seconds : (s.durationSeconds || ''),
+              completed: s.completed !== undefined ? s.completed : true
+            };
+          })
+        };
+      });
 
       setExercises(loadedExs);
       setIsEditingExisting(!readOnly);
@@ -170,9 +188,9 @@ export function SessionWorkoutLoggerModal({
     notes: '',
     alternative: '',
     sets: [
-      { setNum: 1, weightKg: globalUnit === 'lbs' ? 100 : 50, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true },
-      { setNum: 2, weightKg: globalUnit === 'lbs' ? 100 : 50, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true },
-      { setNum: 3, weightKg: globalUnit === 'lbs' ? 100 : 50, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true }
+      { setNum: 1, weightKg: 0, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true },
+      { setNum: 2, weightKg: 0, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true },
+      { setNum: 3, weightKg: 0, weightUnit: globalUnit || 'kg', reps: 10, seconds: '', completed: true }
     ]
   });
 
@@ -201,12 +219,25 @@ export function SessionWorkoutLoggerModal({
       const timeMatch = repStr.toLowerCase().match(/(\d+)\s*(?:s|sec|secs|seconds)\b/);
       const parsedSeconds = timeMatch ? parseInt(timeMatch[1], 10) : (ex.seconds || '');
       const parsedReps = timeMatch ? '' : (parseInt(repStr.replace(/[^0-9]/g, '')) || 10);
-      const targetWeight = Number(ex.targetWeightKg) || (Array.isArray(ex.targetWeights) ? Number(ex.targetWeights[0]) : 50) || 50;
+      
+      const isBw = isBodyweightExercise(ex.name);
+      let targetWeight = 0;
+      if (ex.targetWeightKg !== undefined && ex.targetWeightKg !== null && ex.targetWeightKg !== '' && !isNaN(Number(ex.targetWeightKg))) {
+        targetWeight = Number(ex.targetWeightKg);
+      } else if (Array.isArray(ex.targetWeights) && ex.targetWeights[0] !== undefined && !isNaN(Number(ex.targetWeights[0]))) {
+        targetWeight = Number(ex.targetWeights[0]);
+      }
+      if (isBw && targetWeight === 50) {
+        targetWeight = 0;
+      }
       
       const sets = Array.from({ length: numSets }).map((_, sIdx) => {
         let setWeight = targetWeight;
-        if (Array.isArray(ex.targetWeights) && ex.targetWeights[sIdx] !== undefined) {
-          setWeight = Number(ex.targetWeights[sIdx]) || targetWeight;
+        if (Array.isArray(ex.targetWeights) && ex.targetWeights[sIdx] !== undefined && !isNaN(Number(ex.targetWeights[sIdx]))) {
+          setWeight = Number(ex.targetWeights[sIdx]);
+        }
+        if (isBw && setWeight === 50) {
+          setWeight = 0;
         }
         return {
           setNum: sIdx + 1,
@@ -218,10 +249,12 @@ export function SessionWorkoutLoggerModal({
         };
       });
 
+      const weightLabel = targetWeight > 0 ? ` @ ${targetWeight} kg` : (isBw ? ' (Bodyweight)' : '');
+
       return {
         id: ex.id || `ex-${exIdx}-${Date.now()}`,
         name: ex.name,
-        prescribedText: `${numSets} sets × ${ex.reps || '10'} reps @ ${targetWeight} kg • Rest ${ex.restSeconds || 90}s`,
+        prescribedText: `${numSets} sets × ${ex.reps || '10'} reps${weightLabel}${ex.restSeconds ? ` • Rest ${ex.restSeconds}s` : ''}`,
         notes: ex.notes || '',
         alternative: ex.alternative || '',
         sets
@@ -258,9 +291,10 @@ export function SessionWorkoutLoggerModal({
     const updated = [...exercises];
     const curSets = updated[exIdx].sets;
     const lastSet = curSets[curSets.length - 1];
+    const isBw = isBodyweightExercise(updated[exIdx].name);
     curSets.push({
       setNum: curSets.length + 1,
-      weightKg: lastSet ? lastSet.weightKg : (globalUnit === 'lbs' ? 100 : 50),
+      weightKg: lastSet ? (lastSet.weightKg !== undefined ? lastSet.weightKg : (isBw ? 0 : 0)) : (isBw ? 0 : 0),
       weightUnit: lastSet ? (lastSet.weightUnit || globalUnit) : globalUnit,
       reps: lastSet ? lastSet.reps : 10,
       seconds: lastSet ? (lastSet.seconds || '') : '',
@@ -453,27 +487,36 @@ export function SessionWorkoutLoggerModal({
         dayName: saveWorkoutName,
         weightUnit: globalUnit,
         focus: activeProg?.days?.find(d => d.dayNumber === selectedDayNumber)?.focus || '',
-        exercises: (currentExercises || []).map((ex, idx) => ({
-          id: ex.id || `ex-${idx}`,
-          name: ex.name,
-          prescribedText: ex.prescribedText || '',
-          alternative: ex.alternative || '',
-          notes: (ex.notes || '').trim(),
-          sets: ex.sets.map(s => {
-            const rawWeight = Number(s.weightKg) || 0;
-            const unit = s.weightUnit || globalUnit || 'kg';
-            const normKg = unit === 'lbs' ? Number((rawWeight / 2.20462).toFixed(1)) : rawWeight;
-            return {
-              setNum: s.setNum,
-              weight: rawWeight,
-              weightKg: normKg,
-              weightUnit: unit,
-              reps: s.reps !== '' && s.reps !== null && !isNaN(Number(s.reps)) ? Number(s.reps) : 0,
-              seconds: s.seconds !== '' && s.seconds !== null && !isNaN(Number(s.seconds)) ? Number(s.seconds) : 0,
-              completed: !!s.completed
-            };
-          })
-        })),
+        exercises: (currentExercises || []).map((ex, idx) => {
+          const isBw = isBodyweightExercise(ex.name || '');
+          let cleanPrescribed = ex.prescribedText || '';
+          if (isBw && cleanPrescribed.includes('@ 50')) {
+            cleanPrescribed = cleanPrescribed.replace(/@\s*50\s*(?:kg|lbs)?/gi, '(Bodyweight)').trim();
+          }
+
+          return {
+            id: ex.id || `ex-${idx}`,
+            name: ex.name,
+            prescribedText: cleanPrescribed,
+            alternative: ex.alternative || '',
+            notes: (ex.notes || '').trim(),
+            sets: ex.sets.map(s => {
+              let rawWeight = Number(s.weightKg) || 0;
+              if (isBw && rawWeight === 50) rawWeight = 0;
+              const unit = s.weightUnit || globalUnit || 'kg';
+              const normKg = unit === 'lbs' ? Number((rawWeight / 2.20462).toFixed(1)) : rawWeight;
+              return {
+                setNum: s.setNum,
+                weight: rawWeight,
+                weightKg: normKg,
+                weightUnit: unit,
+                reps: s.reps !== '' && s.reps !== null && !isNaN(Number(s.reps)) ? Number(s.reps) : 0,
+                seconds: s.seconds !== '' && s.seconds !== null && !isNaN(Number(s.seconds)) ? Number(s.seconds) : 0,
+                completed: !!s.completed
+              };
+            })
+          };
+        }),
         finisher: saveFinisher ? {
           format: saveFinisher.format || 'AMRAP',
           title: saveFinisher.title || saveFinisher.format || 'Conditioning WOD',

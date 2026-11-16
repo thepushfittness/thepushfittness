@@ -7,6 +7,7 @@ import { QuickConditioningModal } from './QuickConditioningModal';
 import { ChangeWorkoutPlanModal } from './ChangeWorkoutPlanModal';
 import { SessionWorkoutLoggerModal } from './SessionWorkoutLoggerModal';
 import { CompletedWorkoutViewModal } from '../common/CompletedWorkoutViewModal';
+import { isBodyweightExercise } from './workoutUtils';
 import { 
   User, 
   ArrowLeft, 
@@ -229,6 +230,100 @@ export function ClientProfileView({
   const [sessionForWorkoutLogging, setSessionForWorkoutLogging] = useState(null);
   const [workoutLoggerInitialMode, setWorkoutLoggerInitialMode] = useState('notepad');
   const [sessionForWorkoutView, setSessionForWorkoutView] = useState(null);
+
+  const handleOpenWorkoutViewFromLog = (log) => {
+    const matchedSession = sessions.find(s => s.id === log.sessionId);
+    if (matchedSession && matchedSession.workoutDone) {
+      setSessionForWorkoutView(matchedSession);
+    } else {
+      const syntheticSession = {
+        id: log.sessionId || `sess-view-${log.id}`,
+        clientId: log.clientId || client?.id,
+        clientName: client?.name || log.clientName || 'Client',
+        date: log.date || new Date().toISOString().split('T')[0],
+        time: '10:00 AM',
+        status: 'completed',
+        durationMinutes: log.durationMinutes || 60,
+        workoutDone: {
+          workoutName: log.workoutName || 'Workout Routine',
+          dayName: log.workoutName || 'Workout Routine',
+          programId: log.programId || null,
+          programName: log.programName || null,
+          dayNumber: log.dayNumber || 1,
+          weightUnit: 'kg',
+          exercises: (log.exercisesCompleted || []).map((ex, idx) => ({
+            id: `ex-${idx}`,
+            name: ex.exerciseName || ex.name || 'Exercise',
+            prescribedText: ex.prescribedText || '',
+            alternative: ex.alternative || '',
+            notes: ex.notes || '',
+            sets: (ex.sets || []).map((s, sIdx) => ({
+              setNum: s.setNum || sIdx + 1,
+              weight: s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg,
+              weightKg: s.weightKg !== undefined ? s.weightKg : (s.weight !== undefined ? s.weight : 0),
+              weightUnit: s.weightUnit || 'kg',
+              reps: s.reps,
+              seconds: s.seconds,
+              completed: s.completed !== false
+            }))
+          })),
+          finisher: log.finisher || log.conditioningCompleted || null,
+          sessionNotes: log.notes || '',
+          rpe: log.rpeOverall || log.rpe || 8,
+          totalVolumeKg: log.totalVolumeKg || 0
+        }
+      };
+      setSessionForWorkoutView(syntheticSession);
+    }
+  };
+
+  const handleOpenWorkoutEditFromLog = (log) => {
+    const matchedSession = sessions.find(s => s.id === log.sessionId);
+    if (matchedSession) {
+      setWorkoutLoggerInitialMode('template');
+      setSessionForWorkoutLogging(matchedSession);
+    } else {
+      const syntheticSession = {
+        id: log.sessionId || `sess-edit-${log.id}`,
+        clientId: log.clientId || client?.id,
+        clientName: client?.name || log.clientName || 'Client',
+        date: log.date || new Date().toISOString().split('T')[0],
+        time: '10:00 AM',
+        status: 'completed',
+        durationMinutes: log.durationMinutes || 60,
+        workoutDone: {
+          workoutName: log.workoutName || 'Workout Routine',
+          dayName: log.workoutName || 'Workout Routine',
+          programId: log.programId || null,
+          programName: log.programName || null,
+          dayNumber: log.dayNumber || 1,
+          weightUnit: 'kg',
+          exercises: (log.exercisesCompleted || []).map((ex, idx) => ({
+            id: `ex-${idx}`,
+            name: ex.exerciseName || ex.name || 'Exercise',
+            prescribedText: ex.prescribedText || '',
+            alternative: ex.alternative || '',
+            notes: ex.notes || '',
+            sets: (ex.sets || []).map((s, sIdx) => ({
+              setNum: s.setNum || sIdx + 1,
+              weight: s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg,
+              weightKg: s.weightKg !== undefined ? s.weightKg : (s.weight !== undefined ? s.weight : 0),
+              weightUnit: s.weightUnit || 'kg',
+              reps: s.reps,
+              seconds: s.seconds,
+              completed: s.completed !== false
+            }))
+          })),
+          finisher: log.finisher || log.conditioningCompleted || null,
+          sessionNotes: log.notes || '',
+          rpe: log.rpeOverall || log.rpe || 8,
+          totalVolumeKg: log.totalVolumeKg || 0
+        }
+      };
+      setWorkoutLoggerInitialMode('template');
+      setSessionForWorkoutLogging(syntheticSession);
+    }
+  };
 
   const handleOpenChangePlan = (prog, mode = 'switch') => {
     setSelectedProgramForChange(prog);
@@ -1187,7 +1282,7 @@ export function ClientProfileView({
           ) : (
             workoutLogs.map((log) => (
               <div key={log.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                   <div>
                     <h3 className="font-bold text-sm text-white flex items-center space-x-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -1197,9 +1292,29 @@ export function ClientProfileView({
                       Completed on {new Date(log.date).toLocaleDateString()} • {log.durationMinutes} mins • Total Volume: {log.totalVolumeKg?.toLocaleString()} kg
                     </p>
                   </div>
-                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                    RPE {log.rpeOverall || 8}/10
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                      RPE {log.rpeOverall || log.rpe || 8}/10
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWorkoutViewFromLog(log)}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center space-x-1 transition"
+                      title="View full workout breakdown"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>View</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWorkoutEditFromLog(log)}
+                      className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold flex items-center space-x-1 transition shadow-sm"
+                      title="Edit past logged workout, weights, reps, or notes"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Edit Log</span>
+                    </button>
+                  </div>
                 </div>
 
                 {log.notes && (
@@ -1239,26 +1354,36 @@ export function ClientProfileView({
 
                 {/* Exercises logged */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {log.exercisesCompleted?.map((ex, exIdx) => (
-                    <div key={exIdx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
-                      <span className="font-bold text-slate-200 block truncate">{ex.exerciseName}</span>
-                      <div className="space-y-0.5 text-slate-400">
-                        {ex.sets?.map((s, sIdx) => (
-                          <div key={sIdx} className="flex justify-between text-[11px]">
-                            <span>Set {s.setNum}:</span>
-                            <span className="font-medium text-emerald-400">
-                              {s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg}{s.weightUnit || 'kg'} × {s.reps} reps (RPE {s.rpe})
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      {ex.notes && (
-                        <div className="text-[11px] text-amber-300 bg-amber-950/20 p-1.5 rounded border border-amber-900/30 mt-1">
-                          <strong>Client Note:</strong> {ex.notes}
+                  {log.exercisesCompleted?.map((ex, exIdx) => {
+                    const isBw = isBodyweightExercise(ex.exerciseName || ex.name || '');
+
+                    return (
+                      <div key={exIdx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
+                        <span className="font-bold text-slate-200 block truncate">{ex.exerciseName || ex.name}</span>
+                        <div className="space-y-0.5 text-slate-400">
+                          {ex.sets?.map((s, sIdx) => {
+                            const rawWeight = s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg;
+                            const isBogus50 = isBw && Number(rawWeight) === 50;
+                            const isZeroWeight = isBw || isBogus50 || Number(rawWeight) === 0;
+
+                            return (
+                              <div key={sIdx} className="flex justify-between text-[11px]">
+                                <span>Set {s.setNum}:</span>
+                                <span className="font-medium text-emerald-400 font-mono">
+                                  {isZeroWeight ? 'BW' : `${rawWeight}${s.weightUnit || 'kg'}`} × {s.reps && Number(s.reps) > 0 ? `${s.reps} reps` : (s.seconds ? `${s.seconds}s` : '0 reps')}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {ex.notes && (
+                          <div className="text-[11px] text-amber-300 bg-amber-950/20 p-1.5 rounded border border-amber-900/30 mt-1">
+                            <strong>Note:</strong> {ex.notes}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))

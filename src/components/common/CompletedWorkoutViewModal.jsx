@@ -8,10 +8,11 @@ import {
   Flame, 
   Trophy, 
   Edit3, 
-  Activity,
-  Layers,
-  Sparkles
+  Activity, 
+  Layers, 
+  Sparkles 
 } from 'lucide-react';
+import { isBodyweightExercise } from '../trainer/workoutUtils';
 
 export function CompletedWorkoutViewModal({
   isOpen,
@@ -157,31 +158,38 @@ export function CompletedWorkoutViewModal({
                     </span>
                   </div>
 
-                  {/* Sets chips */}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {ex.sets?.map((s, sIdx) => (
-                      <div 
-                        key={sIdx}
-                        className={`px-2.5 py-1 rounded-xl text-xs flex items-center space-x-1.5 border ${
-                          s.completed !== false 
-                            ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300' 
-                            : 'bg-slate-900 border-slate-800 text-slate-500'
-                        }`}
-                      >
-                        <span className="font-bold text-[10px] text-slate-400">Set {s.setNum}:</span>
-                        <span className="font-bold font-mono text-white">
-                          {s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg} {s.weightUnit || 'kg'}
-                        </span>
-                        <span className="text-slate-400">×</span>
-                        <span className="font-bold text-white">
-                          {s.reps && Number(s.reps) > 0 ? `${s.reps} reps` : ''}
-                          {s.reps && Number(s.reps) > 0 && s.seconds && Number(s.seconds) > 0 ? ' • ' : ''}
-                          {s.seconds && Number(s.seconds) > 0 ? `${s.seconds}s` : (!s.reps || Number(s.reps) === 0 ? '0 reps' : '')}
-                        </span>
-                        {s.completed !== false && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
-                      </div>
-                    ))}
-                  </div>
+                    {/* Sets chips */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {ex.sets?.map((s, sIdx) => {
+                        const isBw = isBodyweightExercise(ex.name) || (s.weightKg === 0 && (!s.weight || s.weight === 0));
+                        const rawWeight = s.weight !== undefined && s.weight !== null ? s.weight : s.weightKg;
+                        const isBogus50 = isBodyweightExercise(ex.name) && Number(rawWeight) === 50;
+                        const isZeroWeight = isBw || isBogus50 || Number(rawWeight) === 0;
+
+                        return (
+                          <div 
+                            key={sIdx}
+                            className={`px-2.5 py-1 rounded-xl text-xs flex items-center space-x-1.5 border ${
+                              s.completed !== false 
+                                ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300' 
+                                : 'bg-slate-900 border-slate-800 text-slate-500'
+                            }`}
+                          >
+                            <span className="font-bold text-[10px] text-slate-400">Set {s.setNum}:</span>
+                            <span className="font-bold font-mono text-white">
+                              {isZeroWeight ? 'BW' : `${rawWeight} ${s.weightUnit || 'kg'}`}
+                            </span>
+                            <span className="text-slate-400">×</span>
+                            <span className="font-bold text-white">
+                              {s.reps && Number(s.reps) > 0 ? `${s.reps} reps` : ''}
+                              {s.reps && Number(s.reps) > 0 && s.seconds && Number(s.seconds) > 0 ? ' • ' : ''}
+                              {s.seconds && Number(s.seconds) > 0 ? `${s.seconds}s` : (!s.reps || Number(s.reps) === 0 ? '0 reps' : '')}
+                            </span>
+                            {s.completed !== false && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                          </div>
+                        );
+                      })}
+                    </div>
 
                   {/* Exercise notes / movement changes */}
                   {ex.notes && (

@@ -713,8 +713,11 @@ class Database {
           notes: ex.notes || '',
           sets: (ex.sets || []).map(s => ({
             setNum: s.setNum,
+            weight: s.weight !== undefined && s.weight !== null ? Number(s.weight) : (Number(s.weightKg) || 0),
             weightKg: Number(s.weightKg) || 0,
+            weightUnit: s.weightUnit || updated.workoutDone.weightUnit || 'kg',
             reps: Number(s.reps) || 0,
+            seconds: Number(s.seconds) || 0,
             completed: s.completed !== false
           }))
         }));

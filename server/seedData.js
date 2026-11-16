@@ -1,6 +1,6 @@
 // thepushfittness - Production Initial State with Active Roster
 export const initialData = {
-  "lastUpdatedAt": 1794292758806,
+  "lastUpdatedAt": 1794825642155,
   "users": [
     {
       "id": "user-trainer-1",
@@ -271,7 +271,7 @@ export const initialData = {
         "programId": "prog-anindita-1",
         "programName": "Anindita - 12-Week Hypertrophy & Recomposition",
         "rpe": 8,
-        "totalVolumeKg": 4250,
+        "totalVolumeKg": 2831,
         "sessionNotes": "Client moved 10kg DBs easily on incline bench. Increased Lat Pulldown pin. Next week we test 12kg dumbbells.",
         "exercises": [
           {
@@ -414,7 +414,8 @@ export const initialData = {
           "title": "Rowing Machine Intervals",
           "duration": "10 mins",
           "notes": "Completed 5 rounds of 30s sprint / 30s rest. Average split 2:12/500m."
-        }
+        },
+        "totalVolumeLbs": 6241
       },
       "createdAt": "2026-11-03T10:00:00.000Z"
     },
@@ -458,7 +459,7 @@ export const initialData = {
       "dayNumber": 1,
       "date": "2026-11-03",
       "durationMinutes": 60,
-      "totalVolumeKg": 4250,
+      "totalVolumeKg": 2831,
       "exercisesCompleted": [
         {
           "exerciseName": "Incline Dumbbell Press",

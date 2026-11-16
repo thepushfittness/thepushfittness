@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
-import { MODULAR_DAY_PRESETS, parseNotepadText } from './workoutUtils';
+import { MODULAR_DAY_PRESETS, parseNotepadText, isBodyweightExercise } from './workoutUtils';
 import { 
   Dumbbell, 
   Sparkles, 
@@ -391,13 +391,14 @@ export function ChangeWorkoutPlanModal({
       conditioning: preset.conditioning || null,
       exercises: (preset.exercises || []).map(ex => {
         const numSets = Number(ex.sets) || 3;
-        const targetWeights = Array(numSets).fill(ex.targetWeightKg || '50');
+        const fallback = ex.targetWeightKg !== undefined ? ex.targetWeightKg : (isBodyweightExercise(ex.name) ? 'BW' : 0);
+        const targetWeights = Array(numSets).fill(fallback);
         return {
           id: `ex-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
           name: ex.name,
           sets: numSets,
           reps: String(ex.reps || '10'),
-          targetWeightKg: ex.targetWeightKg || '50',
+          targetWeightKg: fallback,
           targetWeights,
           isDifferentWeights: false,
           restSeconds: ex.restSeconds || 90,
@@ -475,7 +476,7 @@ export function ChangeWorkoutPlanModal({
           name: ex.name,
           sets: Number(ex.sets) || 3,
           reps: String(ex.reps || '10'),
-          targetWeightKg: ex.targetWeightKg || 50,
+          targetWeightKg: ex.targetWeightKg !== undefined ? ex.targetWeightKg : (isBodyweightExercise(ex.name) ? 'BW' : 0),
           restSeconds: ex.restSec || ex.restSeconds || 60,
           notes: ex.notes || ''
         }))
@@ -500,7 +501,7 @@ export function ChangeWorkoutPlanModal({
         conditioning: d.conditioning || null,
         exercises: (d.exercises || []).map((ex, exIdx) => {
           const sets = Number(ex.sets) || 3;
-          const targetWeight = (ex.targetWeightKg !== undefined && ex.targetWeightKg !== '') ? ex.targetWeightKg : 50;
+          const targetWeight = (ex.targetWeightKg !== undefined && ex.targetWeightKg !== '') ? ex.targetWeightKg : (isBodyweightExercise(ex.name) ? 'BW' : 0);
           return {
             id: `ex-${Date.now()}-${dIdx}-${exIdx}`,
             name: ex.name,
