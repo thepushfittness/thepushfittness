@@ -52,10 +52,37 @@ class Database {
     if (!snapshot || !Array.isArray(snapshot.users) || !Array.isArray(snapshot.clients)) {
       return false;
     }
-    this.data = snapshot;
-    if (!this.data.lastUpdatedAt) {
-      this.data.lastUpdatedAt = Date.now();
+
+    const collections = [
+      'users', 'clients', 'programs', 'workoutLogs', 
+      'nutritionLogs', 'sessions', 'payments', 'measurements', 
+      'performanceMetrics', 'progressPhotos', 'notes', 'messages', 'checkins', 'notifications', 'templates'
+    ];
+
+    const merged = { ...snapshot };
+    collections.forEach(col => {
+      if (!Array.isArray(merged[col])) {
+        merged[col] = Array.isArray(this.data?.[col]) ? [...this.data[col]] : [];
+      }
+    });
+
+    // Ensure Trainer user is ALWAYS present and never erased
+    if (!merged.users.some(u => u.role === 'trainer')) {
+      const defaultTrainer = this.data?.users?.find(u => u.role === 'trainer') || {
+        id: "user-trainer-1",
+        email: "admin@thepushfittness.com",
+        name: "Coach Pushkar Mayekar",
+        role: "trainer",
+        password: "admin123",
+        phone: "+91 98765 43210",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+        createdAt: "2026-10-02T11:07:59.360Z"
+      };
+      merged.users.unshift(defaultTrainer);
     }
+
+    this.data = merged;
+    this.data.lastUpdatedAt = Date.now();
     this.save(true);
     return true;
   }
@@ -73,9 +100,50 @@ class Database {
   }
 
   // --- Users & Auth ---
-  findUserByEmail(email) {
-    if (!email) return null;
-    return this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  findUserByEmail(identifier) {
+    if (!identifier) return null;
+    const cleanId = String(identifier).trim().toLowerCase();
+    const digitsOnly = cleanId.replace(/\D/g, '');
+
+    // 1. Exact email match
+    let user = this.data.users.find(u => u.email.toLowerCase() === cleanId);
+    if (user) return user;
+
+    // 2. Trainer aliases (handle spelling of fitness vs fittness, coach, pushkar, admin)
+    const isTrainerAlias = 
+      cleanId === 'admin@thepushfitness.com' ||
+      cleanId === 'admin@thepushfittness.com' ||
+      cleanId === 'admin' ||
+      cleanId === 'coach' ||
+      cleanId === 'pushkar' ||
+      cleanId.startsWith('coach.') ||
+      cleanId.startsWith('coach@') ||
+      cleanId.startsWith('pushkar@') ||
+      cleanId.includes('pushkar') ||
+      (digitsOnly && digitsOnly.endsWith('9876543210'));
+
+    if (isTrainerAlias) {
+      const trainer = this.data.users.find(u => u.role === 'trainer');
+      if (trainer) return trainer;
+    }
+
+    // 3. Phone number match for any user
+    if (digitsOnly.length >= 7) {
+      user = this.data.users.find(u => {
+        const uDigits = (u.phone || '').replace(/\D/g, '');
+        return uDigits && (uDigits.includes(digitsOnly) || digitsOnly.includes(uDigits));
+      });
+      if (user) return user;
+    }
+
+    // 4. Client name match or client email variations
+    user = this.data.users.find(u => 
+      u.name.toLowerCase() === cleanId || 
+      u.email.toLowerCase().replace('fitness', 'fittness') === cleanId.replace('fitness', 'fittness')
+    );
+    if (user) return user;
+
+    return null;
   }
 
   findUserById(id) {

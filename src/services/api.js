@@ -15,6 +15,17 @@ export function setAuthToken(token) {
   }
 }
 
+export function hasLocalBackup() {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return Boolean(parsed && Array.isArray(parsed.clients) && parsed.clients.length > 0);
+  } catch {
+    return false;
+  }
+}
+
 export async function ensureServerSynced() {
   try {
     const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
@@ -25,13 +36,24 @@ export async function ensureServerSynced() {
     const syncRes = await fetch(`${API_BASE}/system/sync`).then(r => r.ok ? r.json() : null).catch(() => null);
     const serverTime = syncRes?.lastUpdatedAt || 0;
     const serverClientCount = syncRes?.clientCount || 0;
+    const serverLogsCount = syncRes?.workoutLogsCount || 0;
 
-    // Restore if server has 0 clients while local snapshot has clients, OR local snapshot is newer
-    if (localSnapshot.clients.length > 0 && (serverClientCount === 0 || (localSnapshot.lastUpdatedAt || 0) > serverTime)) {
+    const localClientCount = localSnapshot.clients?.length || 0;
+    const localLogsCount = localSnapshot.workoutLogs?.length || 0;
+
+    // Restore if server has 0 clients, or local has more clients or more workout logs, or local timestamp is newer
+    const shouldRestore = localClientCount > 0 && (
+      serverClientCount === 0 ||
+      localClientCount > serverClientCount ||
+      localLogsCount > serverLogsCount ||
+      (localSnapshot.lastUpdatedAt || 0) > serverTime
+    );
+
+    if (shouldRestore) {
       await fetch(`${API_BASE}/system/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ snapshot: localSnapshot })
+        body: JSON.stringify({ snapshot: localSnapshot, force: true })
       }).catch(() => null);
     }
   } catch (e) {

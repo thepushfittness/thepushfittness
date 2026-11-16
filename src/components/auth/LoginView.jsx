@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { api, hasLocalBackup } from '../../services/api';
 import { 
   Dumbbell, 
   Lock, 
@@ -8,11 +9,13 @@ import {
   EyeOff, 
   AlertCircle, 
   CheckCircle2, 
-  ArrowRight,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
-  HelpCircle
+  ArrowRight, 
+  ShieldCheck, 
+  Smartphone, 
+  Sparkles, 
+  HelpCircle,
+  RotateCcw,
+  UserCheck
 } from 'lucide-react';
 
 export function LoginView() {
@@ -23,17 +26,49 @@ export function LoginView() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isWakingUp, setIsWakingUp] = useState(false);
-  
-  // Forgot Password modal state
+
+  // Backup detection state
+  const [hasBackup, setHasBackup] = useState(false);
+  const [restoringBackup, setRestoringBackup] = useState(false);
+  const [backupStatusMessage, setBackupStatusMessage] = useState('');
+
+  // Forgot / Reset Password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [newResetPassword, setNewResetPassword] = useState('');
+  const [resetSuccessMessage, setResetSuccessMessage] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  useEffect(() => {
+    setHasBackup(hasLocalBackup());
+  }, []);
+
+  const handleFillCoachCredentials = () => {
+    setEmail('admin@thepushfittness.com');
+    setPassword('admin123');
+    setErrorMessage('');
+  };
+
+  const handleRestoreBackup = async () => {
+    try {
+      setRestoringBackup(true);
+      setBackupStatusMessage('Restoring client database and workout logs from this device...');
+      const res = await api.restoreLocalSnapshot();
+      setBackupStatusMessage(`Success! Restored ${res.clientCount || 'all'} clients & ${res.workoutLogsCount || 0} workout logs to cloud.`);
+      setEmail('admin@thepushfittness.com');
+      setPassword('admin123');
+      setErrorMessage('');
+    } catch (err) {
+      setBackupStatusMessage(err.message || 'Failed to restore local backup.');
+    } finally {
+      setRestoringBackup(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      setErrorMessage('Please enter both your email and password.');
+      setErrorMessage('Please enter both your email/ID and password.');
       return;
     }
 
@@ -43,7 +78,7 @@ export function LoginView() {
       setIsWakingUp(false);
       setErrorMessage('');
 
-      // If cloud server is waking from overnight idle sleep (Render free tier), reassure the user
+      // If cloud server is waking from overnight standby (Render free tier), reassure the user
       wakeTimer = setTimeout(() => {
         setIsWakingUp(true);
       }, 2500);
@@ -59,9 +94,9 @@ export function LoginView() {
         msg.includes('503') ||
         msg.includes('Failed to connect')
       ) {
-        setErrorMessage('Studio server is starting up after overnight standby. Please wait 15–20 seconds and tap Sign In again.');
+        setErrorMessage('Studio server is starting up after standby. Please wait 15–20 seconds and tap Sign In again.');
       } else {
-        setErrorMessage(msg || 'Invalid email or password. Please try again.');
+        setErrorMessage(msg || 'Invalid email or password. Tap 1-Tap Coach Sign In below if using default credentials.');
       }
     } finally {
       if (wakeTimer) clearTimeout(wakeTimer);
@@ -70,14 +105,28 @@ export function LoginView() {
     }
   };
 
-  const handleForgotPassword = (e) => {
+  const handleResetPasswordSubmit = async (e) => {
     e.preventDefault();
-    if (!forgotEmail.trim()) return;
-    setForgotLoading(true);
-    setTimeout(() => {
+    if (!forgotEmail.trim() || !newResetPassword.trim()) {
+      setErrorMessage('Please provide both your email/Coach ID and new password.');
+      return;
+    }
+    try {
+      setForgotLoading(true);
+      const res = await api.resetPassword(forgotEmail.trim(), newResetPassword.trim());
+      setResetSuccessMessage(res.message || 'Password successfully updated!');
+      setEmail(forgotEmail.trim());
+      setPassword(newResetPassword.trim());
+      setTimeout(() => {
+        setShowForgotModal(false);
+        setResetSuccessMessage('');
+      }, 1500);
+    } catch (err) {
+      setResetSuccessMessage('');
+      setErrorMessage(err.message || 'Failed to reset password.');
+    } finally {
       setForgotLoading(false);
-      setForgotSubmitted(true);
-    }, 700);
+    }
   };
 
   return (
@@ -103,12 +152,61 @@ export function LoginView() {
 
         {/* Login Card */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-5">
-          <div className="border-b border-slate-800/80 pb-4">
-            <h2 className="text-lg font-bold text-white">Sign In to Your Account</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Enter your credentials to access your trainer portal or client workouts.
-            </p>
+          <div className="border-b border-slate-800/80 pb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">Sign In</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Access Coach Pushkar Mayekar portal or client workouts.
+              </p>
+            </div>
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
           </div>
+
+          {/* Quick Coach 1-Tap Fill Helper */}
+          <div className="bg-slate-950/70 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                CP
+              </div>
+              <div>
+                <span className="font-semibold text-white text-xs block">Coach Pushkar</span>
+                <span className="text-[10px] text-slate-400 font-mono">admin@thepushfittness.com</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleFillCoachCredentials}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold transition flex items-center space-x-1 active:scale-95 shadow-sm shadow-emerald-500/20"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>1-Tap Fill</span>
+            </button>
+          </div>
+
+          {/* Device Local Backup Restore Button (if found) */}
+          {hasBackup && (
+            <div className="p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-2xl space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-cyan-300 flex items-center space-x-1.5">
+                  <RotateCcw className={`w-3.5 h-3.5 text-cyan-400 ${restoringBackup ? 'animate-spin' : ''}`} />
+                  <span>Device Backup Detected</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRestoreBackup}
+                  disabled={restoringBackup}
+                  className="px-2.5 py-1 text-[11px] bg-cyan-500 hover:bg-cyan-450 text-slate-950 font-bold rounded-lg transition"
+                >
+                  {restoringBackup ? 'Restoring...' : 'Restore to Cloud'}
+                </button>
+              </div>
+              {backupStatusMessage && (
+                <p className="text-[11px] text-cyan-300 font-medium">{backupStatusMessage}</p>
+              )}
+            </div>
+          )}
 
           {/* Error Banner */}
           {errorMessage && (
@@ -119,21 +217,21 @@ export function LoginView() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Field */}
+            {/* Email / ID Field */}
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Email Address
+                Email Address or Coach ID
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="coach@thepushfittness.com"
+                  placeholder="admin@thepushfittness.com (or pushkar)"
                   className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-600 transition outline-none"
                 />
               </div>
@@ -147,10 +245,13 @@ export function LoginView() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setShowForgotModal(true)}
+                  onClick={() => {
+                    setForgotEmail(email || 'admin@thepushfittness.com');
+                    setShowForgotModal(true);
+                  }}
                   className="text-[11px] text-emerald-400 hover:text-emerald-300 transition"
                 >
-                  Forgot password?
+                  Forgot / Change password?
                 </button>
               </div>
               <div className="relative">
@@ -179,7 +280,7 @@ export function LoginView() {
             {loading && isWakingUp && (
               <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl flex items-center space-x-2.5 text-xs text-amber-300 animate-fadeIn">
                 <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                <span>Connecting to studio server (waking from overnight standby, please hold on ~20s)...</span>
+                <span>Connecting to studio server (waking from standby, please hold on ~20s)...</span>
               </div>
             )}
 
@@ -207,7 +308,7 @@ export function LoginView() {
         </p>
       </div>
 
-      {/* Forgot Password Modal */}
+      {/* Forgot / Reset Password Modal */}
       {showForgotModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
@@ -217,50 +318,49 @@ export function LoginView() {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-white">Reset Account Password</h3>
-                <p className="text-xs text-slate-400">Account Recovery Instructions</p>
+                <p className="text-xs text-slate-400">Instant Password Recovery</p>
               </div>
             </div>
 
-            {forgotSubmitted ? (
+            {resetSuccessMessage ? (
               <div className="space-y-4 text-xs">
                 <div className="p-3 bg-emerald-950/40 border border-emerald-900/60 rounded-xl text-emerald-300 flex items-start space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold block">Reset instructions dispatched!</span>
+                    <span className="font-bold block">{resetSuccessMessage}</span>
                     <p className="text-[11px] text-slate-300 mt-1">
-                      If an account exists for <span className="text-white font-mono">{forgotEmail}</span>, instructions have been sent.
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-2">
-                      Please check your inbox or contact your coach for immediate access.
+                      Your new password is now active. Returning you to sign in...
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForgotModal(false);
-                    setForgotSubmitted(false);
-                  }}
-                  className="w-full py-2 bg-slate-800 hover:bg-slate-750 text-white font-bold rounded-xl text-xs transition"
-                >
-                  Return to Sign In
-                </button>
               </div>
             ) : (
-              <form onSubmit={handleForgotPassword} className="space-y-3 text-xs">
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-3 text-xs">
                 <p className="text-slate-400 text-[11px]">
-                  Enter the email address registered with your account to receive password reset assistance.
+                  Enter your Coach email or ID and choose your new password. It will update instantly on the cloud server.
                 </p>
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Registered Email</label>
+                  <label className="text-slate-300 font-semibold block mb-1">Email or Coach ID</label>
                   <input
-                    type="email"
+                    type="text"
                     required
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="email@thepushfittness.com"
+                    placeholder="admin@thepushfittness.com"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
                   />
+                </div>
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">New Password</label>
+                  <input
+                    type="text"
+                    required
+                    value={newResetPassword}
+                    onChange={(e) => setNewResetPassword(e.target.value)}
+                    placeholder="Enter at least 4 characters"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Tip: Default password is <span className="text-emerald-400 font-mono">admin123</span></p>
                 </div>
 
                 <div className="flex items-center space-x-2 pt-2">
@@ -276,7 +376,7 @@ export function LoginView() {
                     disabled={forgotLoading}
                     className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-slate-950 font-bold transition flex items-center justify-center space-x-1"
                   >
-                    {forgotLoading ? 'Processing...' : 'Send Help'}
+                    {forgotLoading ? 'Updating...' : 'Save & Sign In'}
                   </button>
                 </div>
               </form>
