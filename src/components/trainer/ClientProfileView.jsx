@@ -241,7 +241,7 @@ export function ClientProfileView({
         clientId: log.clientId || client?.id,
         clientName: client?.name || log.clientName || 'Client',
         date: log.date || new Date().toISOString().split('T')[0],
-        time: '10:00 AM',
+        time: matchedSession?.time || '10:00 AM',
         status: 'completed',
         durationMinutes: log.durationMinutes || 60,
         workoutDone: {
@@ -251,7 +251,7 @@ export function ClientProfileView({
           programName: log.programName || null,
           dayNumber: log.dayNumber || 1,
           weightUnit: 'kg',
-          exercises: (log.exercisesCompleted || []).map((ex, idx) => ({
+          exercises: (log.exercisesCompleted || log.exercises || []).map((ex, idx) => ({
             id: `ex-${idx}`,
             name: ex.exerciseName || ex.name || 'Exercise',
             prescribedText: ex.prescribedText || '',
@@ -279,7 +279,7 @@ export function ClientProfileView({
 
   const handleOpenWorkoutEditFromLog = (log) => {
     const matchedSession = sessions.find(s => s.id === log.sessionId);
-    if (matchedSession) {
+    if (matchedSession && matchedSession.workoutDone) {
       setWorkoutLoggerInitialMode('template');
       setSessionForWorkoutLogging(matchedSession);
     } else {
@@ -288,7 +288,7 @@ export function ClientProfileView({
         clientId: log.clientId || client?.id,
         clientName: client?.name || log.clientName || 'Client',
         date: log.date || new Date().toISOString().split('T')[0],
-        time: '10:00 AM',
+        time: matchedSession?.time || '10:00 AM',
         status: 'completed',
         durationMinutes: log.durationMinutes || 60,
         workoutDone: {
@@ -298,7 +298,7 @@ export function ClientProfileView({
           programName: log.programName || null,
           dayNumber: log.dayNumber || 1,
           weightUnit: 'kg',
-          exercises: (log.exercisesCompleted || []).map((ex, idx) => ({
+          exercises: (log.exercisesCompleted || log.exercises || []).map((ex, idx) => ({
             id: `ex-${idx}`,
             name: ex.exerciseName || ex.name || 'Exercise',
             prescribedText: ex.prescribedText || '',

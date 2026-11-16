@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
+import { useNotifications } from '../../context/NotificationContext';
 import { parseNotepadWorkout, convertWorkoutToNotepadText, isBodyweightExercise, CONDITIONING_FORMATS, CONDITIONING_WOD_PRESETS } from './workoutUtils';
 import { 
   Dumbbell, 

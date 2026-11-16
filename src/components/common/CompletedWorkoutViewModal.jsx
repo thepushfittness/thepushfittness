@@ -175,7 +175,7 @@ export function CompletedWorkoutViewModal({
                                 : 'bg-slate-900 border-slate-800 text-slate-500'
                             }`}
                           >
-                            <span className="font-bold text-[10px] text-slate-400">Set {s.setNum}:</span>
+                            <span className="font-bold text-[10px] text-slate-400">Set {s.setNum || sIdx + 1}:</span>
                             <span className="font-bold font-mono text-white">
                               {isZeroWeight ? 'BW' : `${rawWeight} ${s.weightUnit || 'kg'}`}
                             </span>
