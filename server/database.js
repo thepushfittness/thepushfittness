@@ -136,11 +136,24 @@ class Database {
       if (user) return user;
     }
 
-    // 4. Client name match or client email variations
-    user = this.data.users.find(u => 
-      u.name.toLowerCase() === cleanId || 
-      u.email.toLowerCase().replace('fitness', 'fittness') === cleanId.replace('fitness', 'fittness')
-    );
+    // 4. Client name match, first name, stripped name, or email prefix
+    user = this.data.users.find(u => {
+      const uName = (u.name || '').toLowerCase();
+      const uEmail = (u.email || '').toLowerCase();
+      const firstName = uName.split(' ')[0];
+      const strippedName = uName.replace(/\s+/g, '');
+      const strippedCleanId = cleanId.replace(/\s+/g, '');
+      const emailPrefix = uEmail.split('@')[0];
+
+      return (
+        uName === cleanId ||
+        firstName === cleanId ||
+        strippedName === strippedCleanId ||
+        uEmail === cleanId ||
+        emailPrefix === cleanId ||
+        uEmail.replace('fitness', 'fittness') === cleanId.replace('fitness', 'fittness')
+      );
+    });
     if (user) return user;
 
     return null;
